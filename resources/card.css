@@ -1,0 +1,121 @@
+* {box-sizing: border-box;}
+
+body {
+    margin: 0;
+    background-color: #F9F0DA;
+}
+
+.card {
+    background-color:#fff;
+    width: 49%; /* Уменьшил ширину карточек, чтобы они могли поместиться лучше */
+    margin: 5px; /* Добавил отступы вокруг карточек */
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+    transition: 0.3s;
+    border-radius: 5px;
+    display: inline-block; /* Это свойство позволяет карточкам располагаться горизонтально */
+    vertical-align: top; /* Выравнивание по верхнему краю, чтобы изображения были на одном уровне */
+    
+}
+
+.img-card {
+    border-radius: 5px 5px 0 0;
+    width: 100%;
+    height: 400px;
+}
+
+/* Опционально: добавьте отступы вокруг контейнера, если это необходимо */
+.container {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+#button-url {
+    margin-bottom: 5px;
+    background-color: #7BA7AB; /* Синий цвет фона */
+    color: #fff; /* Белый цвет текста */
+    border: none; /* Убрать границу */
+    padding: 10px 20px; /* Отступы внутри кнопки */
+    border-radius: 5px; /* Закругленные углы */
+    cursor: pointer; /* Изменить курсор при наведении */
+    transition: background-color 0.3s, color 0.3s; /* Плавное изменение цвета при наведении */
+    text-decoration: none;
+}
+
+/* Стиль кнопки при наведении */
+#button-url:hover {
+    background-color: #7B93B8; /* Изменить цвет фона на более темный синий при наведении */
+    /* Дополнительные стили, если необходимо */
+}
+
+.object {
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
+form {
+    position: relative;
+    width: 300px;
+    margin: 0 auto;
+}
+
+.search {
+    background: #A3D0C3;
+    display: flex; /* Добавляем свойство для создания флекс-контейнера */
+    align-items: center; /* Выравниваем элементы по центру по вертикали */
+    height: 60px;
+    position: relative; /* Добавляем позиционирование, если необходимо */
+}
+
+
+.search input {
+    width: 100%;
+    height: 42px;
+    padding-left: 10px;
+    border: 2px solid #7BA7AB;
+    border-radius: 5px;
+    outline: none;
+    background: #F9F0DA;
+    color: #9E9C9C;
+}
+
+
+.search button {
+    position: absolute; 
+    top: 0;
+    right: 0px;
+    width: 42px;
+    height: 42px;
+    border: none;
+    background: #7BA7AB;
+    border-radius: 0 5px 5px 0;
+    cursor: pointer;
+}
+
+.search button:before {
+    content: "\f002";
+    font-family: FontAwesome;
+    font-size: 16px;
+    color: #F9F0DA;
+}
+
+.pages2 {
+    background-color: #fff;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+    transition: 0.3s;
+    border-radius: 5px;
+    padding: 40px;
+    width: 70%;
+}
+
+#main-img {
+    width: 100%;
+}
+
+#title-text {
+    clear: both;
+    color: white;
+    padding: 10px;
+}
