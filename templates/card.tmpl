@@ -2,8 +2,10 @@
     <div class="card">
         <img class="img-card" src="{{.Img}}" alt="image object">
         <div class="object">
-            <h4><b> {{.Title}}</b></h4>
-            <a href="/tenders/{{.Id}}" id="button-url">Подробнее</a>
+            <h2><b> {{.Title}}</b></h4>
+            <h4><b>ИНН: {{.IIN}}</b></h2>
+            <h4><b>Прибыль за квартрал {{.Income}}р.</b></h2>
+            <a href="/companys/{{.Id}}" id="button-url">Подробнее</a>
         </div>
     </div>
 
