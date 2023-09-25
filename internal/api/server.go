@@ -28,7 +28,7 @@ func StartServer() {
 
 	tenderSlice := []tender{
 		{1, "tednder/1", "image/img1.jpg", "Проект Стадион", title1},
-		{2, "tender/2", "image/img2.jpg", "Проект Дом", title2},
+		{2, "tender/2", "image/img2.jpg", "Проект многоэтажный дом", title2},
 		{3, "tender/3", "image/img3.jpg", "Проект завод", title3},
 	}
 
@@ -49,11 +49,11 @@ func StartServer() {
 					outPut = append(outPut, elem)
 				}
 			}
+		} else {
+			outPut = append(outPut, tenderSlice...)
 
 		}
-		if len(outPut) == 0 {
-			outPut = append(outPut, tenderSlice...)
-		}
+
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"card":    outPut,
 			"CSSFile": "image/card.css",

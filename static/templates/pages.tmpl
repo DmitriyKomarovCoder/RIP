@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+     <link rel="stylesheet" type="text/css" href="/static/css/card.css">
+
+    <title>{{.card.TenderName}}</title>
+</head>
+<body>
+    <div class="search"><h2 id="title-text">{{.card.TenderName}}</h3> </div>
+    <div class="pages2">
+        <img id="main-img" src="/{{.card.ImageURL}}" alt="{{.Title}}">
+        <p>{{.card.Description}}</p>
+        <a id="button-url" href="/tenders">Назад</a>
+    </div>
+</body>
+</html>

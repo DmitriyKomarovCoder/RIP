@@ -1,0 +1,16 @@
+{{define "product"}}
+    <div class="card">
+        <img class="img-card" src="{{.ImageURL}}" alt="image object">
+        <div class="object">
+            <h4><b> {{.TenderName}}</b></h4>
+            <div class="button-container">
+                <a href="/tenders/{{.ID}}" id="button-url">Подробнее</a>
+                <form action="api/deleteTender" method="POST">
+                    <input type="hidden" name="tender_id" value="{{.ID}}">
+                    <button type="submit" class="delete-button"> <i class="fa fa-trash"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+{{end}}
