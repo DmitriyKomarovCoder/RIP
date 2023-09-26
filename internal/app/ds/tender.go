@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type Application struct {
+type Tender struct {
 	gorm.Model
 	ID             uint      `json:"id" grom:"primary_key"`
 	Name           string    `json:"application_name" gorm:"type:varchar(255)"`
@@ -15,5 +15,7 @@ type Application struct {
 	FormationDate  time.Time `json:"formation_date" gorm:"type:date"`
 	CompletionDate time.Time `json:"completion_date" gorm:"type:date"`
 	ModeratorID    uint      `json:"moderator_id"`
-	Moderator      Moderator `json:"moderator" gorm:"foreignkey:ModeratorID"`
+	Moderator      User      `json:"moderator" gorm:"foreignkey:ModeratorID"`
+	UserID         int       `json:"user_id"`
+	User           User      `json:"user" gorm:"foreignkey:UserID"`
 }

@@ -20,10 +20,10 @@ func main() {
 		panic("failed to connect database")
 	}
 	if err := db.AutoMigrate(
-		&ds.Application{},
-		&ds.Moderator{},
-		&ds.Tenders{},
-		&ds.TenderApplication{},
+		&ds.User{},
+		&ds.Company{},
+		&ds.Tender{},
+		&ds.TenderCompany{},
 	); err != nil {
 		panic("cant migrate db:" + err.Error())
 	}

@@ -2,11 +2,12 @@
     <div class="card">
         <img class="img-card" src="{{.ImageURL}}" alt="image object">
         <div class="object">
-            <h4><b> {{.TenderName}}</b></h4>
+            <h2><b> {{.CompanyName}}</b></h4>
+            <h4><b>ИНН: {{.IIN}}</b></h2>
             <div class="button-container">
-                <a href="/tenders/{{.ID}}" id="button-url">Подробнее</a>
-                <form action="api/deleteTender" method="POST">
-                    <input type="hidden" name="tender_id" value="{{.ID}}">
+                <a href="/companys/{{.ID}}" id="button-url">Подробнее</a>
+                <form action="api/deleteCompany" method="POST">
+                    <input type="hidden" name="company_id" value="{{.ID}}">
                     <button type="submit" class="delete-button"> <i class="fa fa-trash"></i></button>
                 </form>
             </div>

@@ -20,9 +20,9 @@ func NewHandler(l *logrus.Logger, r *repository.Repository) *Handler {
 }
 
 func (h *Handler) RegisterHandler(router *gin.Engine) {
-	router.GET("tenders", h.getTenders)
-	router.GET("tenders/:id", h.getTenderDetails)
-	router.POST("api/deleteTender", h.postTenderStatus)
+	router.GET("companys", h.getCompanys)
+	router.GET("companys/:id", h.getCompanyDetails)
+	router.POST("api/deleteCompany", h.postCompanyStatus)
 	registerStatic(router)
 }
 

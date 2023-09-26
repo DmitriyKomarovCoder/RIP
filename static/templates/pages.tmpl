@@ -3,14 +3,14 @@
 <head>
      <link rel="stylesheet" type="text/css" href="/static/css/card.css">
 
-    <title>{{.card.TenderName}}</title>
+    <title>{{.card.CompanyName}}</title>
 </head>
 <body>
-    <div class="search"><h2 id="title-text">{{.card.TenderName}}</h3> </div>
+    <div class="search"><h2 id="title-text">{{.card.CompanyName}}</h3> </div>
     <div class="pages2">
         <img id="main-img" src="/{{.card.ImageURL}}" alt="{{.Title}}">
         <p>{{.card.Description}}</p>
-        <a id="button-url" href="/tenders">Назад</a>
+        <a id="button-url" href="/companys">Назад</a>
     </div>
 </body>
 </html>
