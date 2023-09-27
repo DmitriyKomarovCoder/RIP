@@ -15,24 +15,24 @@ func (h *Handler) getCompanys(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tenders"})
 		return
 	}
-	query := ctx.DefaultQuery("query", "")
-	if query != "" {
+	company_name := ctx.DefaultQuery("company_name", "")
+	if company_name != "" {
 		searchResults := []ds.Company{}
 
 		for _, company := range *companysList {
-			if strings.Contains(strings.ToLower(company.CompanyName), strings.ToLower(query)) {
+			if strings.Contains(strings.ToLower(company.CompanyName), strings.ToLower(company_name)) {
 				searchResults = append(searchResults, company)
 			}
 		}
 
 		ctx.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"card":  searchResults,
-			"query": query,
+			"card":         searchResults,
+			"company_name": company_name,
 		})
 	} else {
 		ctx.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"card":  companysList,
-			"query": query,
+			"card":         companysList,
+			"company_name": company_name,
 		})
 	}
 
