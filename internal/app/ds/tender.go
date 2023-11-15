@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// СТАТУС ТЕНДЕРА
 type Tender struct {
 	gorm.Model
 	ID             uint      `json:"id" grom:"primary_key"`
@@ -16,6 +17,6 @@ type Tender struct {
 	CompletionDate time.Time `json:"completion_date" gorm:"type:date"`
 	ModeratorID    uint      `json:"moderator_id"`
 	Moderator      User      `json:"moderator" gorm:"foreignkey:ModeratorID"`
-	UserID         int       `json:"user_id"`
+	UserID         uint      `json:"user_id"`
 	User           User      `json:"user" gorm:"foreignkey:UserID"`
 }

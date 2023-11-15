@@ -6,6 +6,7 @@ import (
 	"RIP/internal/app/handler"
 	app "RIP/internal/app/pkg"
 	"RIP/internal/app/repository"
+	Minio "RIP/internal/app/s3/minio"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,7 @@ import (
 
 func main() {
 	logger := logrus.New()
+	minioClient := Minio.NewMinioClient(logger)
 	router := gin.Default()
 	conf, err := config.NewConfig(logger)
 	if err != nil {
@@ -28,7 +30,7 @@ func main() {
 	if errRep != nil {
 		logger.Fatalf("Error from repository: %s", err)
 	}
-	hand := handler.NewHandler(logger, rep)
+	hand := handler.NewHandler(logger, rep, minioClient)
 	application := app.NewApp(conf, router, logger, hand)
 	application.RunApp()
 }

@@ -2,57 +2,179 @@ package handler
 
 import (
 	"RIP/internal/app/ds"
+	"RIP/internal/app/utils"
+	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 )
 
-func (h *Handler) getCompanys(ctx *gin.Context) {
-	companysList, err := h.Repository.GetOpenCompanys()
+func (h *Handler) CompaniesList(ctx *gin.Context) {
+	queryText, _ := ctx.GetQuery("company_name")
+	companies, err := h.Repository.CompaniesList(queryText)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tenders"})
+		h.errorHandler(ctx, http.StatusNoContent, err)
 		return
 	}
-	company_name := ctx.DefaultQuery("company_name", "")
-	if company_name != "" {
-		searchResults := []ds.Company{}
-
-		for _, company := range *companysList {
-			if strings.Contains(strings.ToLower(company.CompanyName), strings.ToLower(company_name)) {
-				searchResults = append(searchResults, company)
-			}
-		}
-
-		ctx.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"card":         searchResults,
-			"company_name": company_name,
-		})
-	} else {
-		ctx.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"card":         companysList,
-			"company_name": company_name,
-		})
-	}
-
-}
-
-func (h *Handler) getCompanyDetails(ctx *gin.Context) {
-	idGet := ctx.Param("id")
-	id, _ := strconv.Atoi(idGet)
-	tender, err := h.Repository.GetCompanyById(id)
+	draftID, err := h.Repository.GetTenderDraftID(moderatorID)
 	if err != nil {
-		ctx.String(http.StatusNotFound, "404 - Not Found")
+		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
 	}
-	ctx.HTML(http.StatusOK, "pages.tmpl", gin.H{
-		"card": tender,
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"companies": companies,
+		"draft_id":  draftID,
 	})
 }
 
-func (h *Handler) postCompanyStatus(ctx *gin.Context) {
-	companyID := ctx.PostForm("company_id")
-	h.Repository.DeleteCompany(companyID)
-	ctx.Redirect(http.StatusFound, "/companys")
+func (h *Handler) GetCompanyById(ctx *gin.Context) {
+	//queryText, _ := ctx.GetQuery("company_name")
+
+	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+	}
+
+	company, err := h.Repository.GetCompanyById(uint(id))
+	if err != nil {
+		h.errorHandler(ctx, http.StatusInternalServerError, err)
+		return
+	}
+	h.successHandler(ctx, "company", 200, company)
 }
+
+func (h *Handler) DeleteCompany(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+	if id == 0 {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
+		return
+	}
+
+	url := h.Repository.DeleteCompanyImage(uint(id))
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	h.DeleteImage(utils.ExtractObjectNameFromUrl(url))
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	err = h.Repository.DeleteCompany(uint(id))
+
+	if gorm.IsRecordNotFoundError(err) {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+	} else if err != nil {
+		h.errorHandler(ctx, http.StatusInternalServerError, err)
+	}
+
+	ctx.JSON(http.StatusOK, "threat deleted successfully")
+}
+
+func (h *Handler) AddCompany(ctx *gin.Context) {
+	var newCompany ds.Company
+	if err := ctx.BindJSON(&newCompany); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	if newCompany.ID != 0 {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
+		return
+	}
+
+	if newCompany.CompanyName != "" {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя компании не может быть пустой"))
+		return
+	}
+
+	if newCompany.IIN != "" {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя ИИН не может быть пустой"))
+		return
+	}
+
+	file, header, err := ctx.Request.FormFile("image")
+	if err != http.ErrMissingFile && err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "ошибка при загрузке изображения"})
+		return
+	}
+
+	if newCompany.ImageURL, err = h.SaveImage(ctx.Request.Context(), file, header); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "ошибка при сохранении изображения"})
+		return
+	}
+
+	create_id, err := h.Repository.AddCompany(&newCompany)
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	h.successHandler(ctx, "city_id", 201, create_id)
+}
+
+func (h *Handler) UpdateCompany(ctx *gin.Context) {
+	file, header, err := ctx.Request.FormFile("image")
+	// if err != nil {
+	// 	h.errorHandler(ctx, http.StatusBadRequest, err)
+	// 	return
+	// }
+
+	var updatedCompany ds.Company
+	if err := ctx.BindJSON(&updatedCompany); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	if updatedCompany.ID == 0 {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
+	}
+
+	if header != nil && header.Size != 0 {
+		if updatedCompany.ImageURL, err = h.SaveImage(ctx.Request.Context(), file, header); err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err})
+			return
+		}
+
+		url := h.Repository.DeleteCompanyImage(updatedCompany.ID)
+
+		h.DeleteImage(utils.ExtractObjectNameFromUrl(url))
+	}
+
+	if _, err := h.Repository.UpdateCompany(&updatedCompany); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	h.successHandler(ctx, "updated_company", 200, updatedCompany)
+}
+
+func (h *Handler) AddCompanyToRequest(ctx *gin.Context) {
+	id, _ := strconv.ParseUint(ctx.Param("id"), 10, 64)
+
+	draftID, err := h.Repository.AddCompanyToDraft(uint(id), creatorID)
+
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"draftID": draftID,
+	})
+}
+
+// func (h *Handler) postCompanyStatus(ctx *gin.Context) {
+// 	companyID := ctx.PostForm("company_id")
+// 	h.Repository.DeleteCompany(companyID)
+// 	ctx.Redirect(http.StatusFound, "/companys")
+// }
