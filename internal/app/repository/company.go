@@ -23,7 +23,7 @@ func (r *Repository) GetCompanyById(id uint) (*ds.Company, error) {
 }
 
 func (r *Repository) CompaniesList(name string) (*[]ds.Company, error) {
-	name = strings.ToLower(name)
+	//name = strings.ToLower(name)
 
 	var companies []ds.Company
 	if err := r.db.Where("company_name LIKE ? AND status != ?", "%"+name+"%", "удален").Find(&companies).Error; err != nil {
@@ -34,6 +34,7 @@ func (r *Repository) CompaniesList(name string) (*[]ds.Company, error) {
 
 func (r *Repository) AddCompany(company *ds.Company) (uint, error) {
 	company.Status = "действует"
+	//	fmt.Print(company.ID)
 	result := r.db.Create(&company)
 	return company.ID, result.Error
 }
@@ -63,10 +64,6 @@ func (r *Repository) UpdateCompany(updatedCompany *ds.Company) (*ds.Company, err
 		oldCompany.CompanyName = updatedCompany.CompanyName
 	}
 
-	if updatedCompany.Status != "" {
-		oldCompany.Status = updatedCompany.Status
-	}
-
 	if updatedCompany.ImageURL != "" {
 		oldCompany.ImageURL = updatedCompany.ImageURL
 	}
@@ -87,7 +84,7 @@ func (r *Repository) UpdateCompany(updatedCompany *ds.Company) (*ds.Company, err
 func (r *Repository) DeleteCompanyImage(companyId uint) string {
 	company := ds.Company{}
 
-	r.db.First(&company, "threat_id = ?", companyId)
+	r.db.First(&company, "id = ?", companyId)
 	return company.ImageURL
 }
 
@@ -123,6 +120,7 @@ func (r *Repository) AddCompanyToDraft(dataID uint, creatorID uint) (uint, error
 	requestToData := ds.TenderCompany{
 		CompanyID: dataID,
 		TenderID:  draftReq.ID,
+		Cash:      0.0,
 	}
 
 	err = r.db.Create(&requestToData).Error

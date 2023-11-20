@@ -52,6 +52,7 @@ func (h *Handler) DeleteCompany(ctx *gin.Context) {
 		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
+
 	if id == 0 {
 		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
 		return
@@ -82,23 +83,27 @@ func (h *Handler) DeleteCompany(ctx *gin.Context) {
 
 func (h *Handler) AddCompany(ctx *gin.Context) {
 	var newCompany ds.Company
-	if err := ctx.BindJSON(&newCompany); err != nil {
-		h.errorHandler(ctx, http.StatusBadRequest, err)
-		return
-	}
 
 	if newCompany.ID != 0 {
 		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
 		return
 	}
 
-	if newCompany.CompanyName != "" {
+	newCompany.CompanyName = ctx.Request.FormValue("name")
+	if newCompany.CompanyName == "" {
 		h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя компании не может быть пустой"))
 		return
 	}
 
-	if newCompany.IIN != "" {
+	newCompany.IIN = ctx.Request.FormValue("IIN")
+	if newCompany.IIN == "" {
 		h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя ИИН не может быть пустой"))
+		return
+	}
+
+	newCompany.Description = ctx.Request.FormValue("description")
+	if newCompany.Description == "" {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("описание не может быть пустой"))
 		return
 	}
 
@@ -123,21 +128,35 @@ func (h *Handler) AddCompany(ctx *gin.Context) {
 }
 
 func (h *Handler) UpdateCompany(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
 	file, header, err := ctx.Request.FormFile("image")
 	// if err != nil {
 	// 	h.errorHandler(ctx, http.StatusBadRequest, err)
 	// 	return
 	// }
 
+	// var updatedCompany ds.Company
+	// if err := ctx.BindJSON(&updatedCompany); err != nil {
+	// 	h.errorHandler(ctx, http.StatusBadRequest, err)
+	// 	return
+	// }
+
 	var updatedCompany ds.Company
-	if err := ctx.BindJSON(&updatedCompany); err != nil {
-		h.errorHandler(ctx, http.StatusBadRequest, err)
-		return
-	}
+
+	updatedCompany.ID = uint(id)
 
 	if updatedCompany.ID == 0 {
 		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
 	}
+
+	updatedCompany.CompanyName = ctx.Request.FormValue("name")
+	updatedCompany.IIN = ctx.Request.FormValue("IIN")
+	updatedCompany.Description = ctx.Request.FormValue("description")
 
 	if header != nil && header.Size != 0 {
 		if updatedCompany.ImageURL, err = h.SaveImage(ctx.Request.Context(), file, header); err != nil {
@@ -147,7 +166,10 @@ func (h *Handler) UpdateCompany(ctx *gin.Context) {
 
 		url := h.Repository.DeleteCompanyImage(updatedCompany.ID)
 
-		h.DeleteImage(utils.ExtractObjectNameFromUrl(url))
+		if err = h.DeleteImage(utils.ExtractObjectNameFromUrl(url)); err != nil {
+			h.errorHandler(ctx, http.StatusBadRequest, err)
+			return
+		}
 	}
 
 	if _, err := h.Repository.UpdateCompany(&updatedCompany); err != nil {

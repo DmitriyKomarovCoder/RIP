@@ -1,12 +1,7 @@
 package ds
 
-import (
-	"gorm.io/gorm"
-)
-
 // УСЛУГА
 type Company struct {
-	gorm.Model
 	ID          uint   `json:"id" gorm:"primary_key"`
 	CompanyName string `json:"company_name" gorm:"type:varchar(30);not null"`
 	Description string `json:"description" gorm:"type:text"`

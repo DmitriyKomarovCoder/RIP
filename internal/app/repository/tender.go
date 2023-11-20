@@ -49,9 +49,9 @@ func (r *Repository) GetTenderWithDataByID(requestID uint) (ds.Tender, []ds.Comp
 	res = r.db.
 		Table("tender_companies").
 		Select("companies.*").
-		Where("status = ?", "действует").
-		Joins("JOIN companies ON tender_companies.CompanyID = companies.id").
-		Where("tender_companies.TenderID = ?", requestID).
+		Where("status != ?", "удалён").
+		Joins("JOIN companies ON tender_companies.\"CompanyID\" = companies.id").
+		Where("tender_companies.\"TenderID\" = ?", requestID).
 		Find(&dataService)
 
 	if err := res.Error; err != nil {
@@ -63,18 +63,18 @@ func (r *Repository) GetTenderWithDataByID(requestID uint) (ds.Tender, []ds.Comp
 
 func (r *Repository) TenderList(status, start, end string) (*[]ds.Tender, error) {
 	var tender []ds.Tender
-	query := r.db.Where("status != ?", "удален")
+	query := r.db.Where("status != ? AND status != ?", "удалён", "черновик")
 
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
 
 	if start != "" {
-		query = query.Where("date_start_of_processing >= ?", start)
+		query = query.Where("creation_date >= ?", start)
 	}
 
 	if end != "" {
-		query = query.Where("date_start_of_processing <= ?", end)
+		query = query.Where("creation_date <= ?", end)
 	}
 	result := query.Find(&tender)
 	return &tender, result.Error
@@ -164,10 +164,10 @@ func (r *Repository) finishRejectHelper(status string, requestID, moderatorID ui
 	return nil
 }
 
-func (r *Repository) DeleteTenderByID(requestID uint) error {
+func (r *Repository) DeleteTenderByID(requestID uint) error { // ?
 	var req ds.Tender
 	res := r.db.
-		Where("id = ?", requestID).
+		Where("id = ?", requestID). // ??
 		Where("status in (?)", "черновик", "сформирован").
 		Take(&req)
 
@@ -209,4 +209,20 @@ func (r *Repository) DeleteCompanyFromRequest(userId, companyId uint) (ds.Tender
 	}
 
 	return r.GetTenderWithDataByID(request.ID)
+}
+
+func (r *Repository) UpdateTenderCompany(tenderID uint, companyID uint, cash float64) error {
+	var updateCompany ds.TenderCompany
+	r.db.Where(" \"TenderID\" = ? and \"CompanyID\" = ?", tenderID, companyID).First(&updateCompany)
+
+	if updateCompany.TenderID == 0 {
+		return errors.New("нет такой заявки")
+	}
+	updateCompany.Cash = cash
+
+	if err := r.db.Save(&updateCompany).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

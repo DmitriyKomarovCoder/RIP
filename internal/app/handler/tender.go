@@ -103,12 +103,12 @@ func (h *Handler) RejectTenderRequest(c *gin.Context) {
 func (h *Handler) FinishTenderRequest(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
-	if err := h.Repository.RejectTenderRequestByID(uint(id), moderatorID); err != nil {
+	if err := h.Repository.FinishEncryptDecryptRequestByID(uint(id), moderatorID); err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, "отклонена")
+	c.JSON(http.StatusOK, "завершена")
 }
 func (h *Handler) DeleteCompanyFromRequest(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -118,7 +118,7 @@ func (h *Handler) DeleteCompanyFromRequest(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Компания удалена из заявки", "companies": companies, "monitoring-request": request})
+	c.JSON(http.StatusOK, gin.H{"message": "Кампания удалена из заявки", "companies": companies, "monitoring-request": request})
 }
 
 func (h *Handler) DeleteTender(c *gin.Context) {
@@ -127,7 +127,28 @@ func (h *Handler) DeleteTender(c *gin.Context) {
 	err := h.Repository.DeleteTenderByID(uint(id))
 	if err != nil {
 		h.errorHandler(c, http.StatusInternalServerError, err)
+		return
 	}
 
 	c.JSON(http.StatusOK, "deleted")
+}
+
+func (h *Handler) UpdateTenderCompany(c *gin.Context) {
+	var TenderCompany ds.TenderCompany
+	if err := c.BindJSON(&TenderCompany); err != nil {
+		h.errorHandler(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if TenderCompany.TenderID == 0 || TenderCompany.CompanyID == 0 {
+		h.errorHandler(c, http.StatusBadRequest, errors.New("не верные id тендера или кампапии"))
+		return
+	}
+
+	err := h.Repository.UpdateTenderCompany(TenderCompany.TenderID, TenderCompany.CompanyID, TenderCompany.Cash)
+	if err != nil {
+		h.errorHandler(c, http.StatusInternalServerError, err)
+	}
+
+	c.JSON(http.StatusOK, "update")
 }

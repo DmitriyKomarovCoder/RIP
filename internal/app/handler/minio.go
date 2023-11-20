@@ -13,7 +13,6 @@ import (
 
 func (h *Handler) SaveImage(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 	objectName := uuid.New().String() + filepath.Ext(header.Filename)
-
 	if _, err := h.Minio.PutObject(mClient.BucketName, objectName, file, header.Size, minio.PutObjectOptions{
 		ContentType: header.Header.Get("Content-Type"),
 	}); err != nil {

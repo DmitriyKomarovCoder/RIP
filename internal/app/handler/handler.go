@@ -33,24 +33,24 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	api.GET("/companies", h.CompaniesList)
 
 	api.GET("/companies/:id", h.GetCompanyById)
-	api.POST("/companies/", h.AddCompany)
-	api.PUT("/companies/", h.UpdateCompany)
+	api.POST("/companies", h.AddCompany)
+	api.PUT("/companies/:id", h.UpdateCompany)
 	api.DELETE("/companies/:id", h.DeleteCompany)
-	api.POST("/companies/request", h.AddCompanyToRequest)
+	api.PUT("/companies/request/:id", h.AddCompanyToRequest)
 
 	// заявки
 	api.GET("/tenders", h.TenderList)
 	api.GET("/tenders/:id", h.GetTenderById)
 	api.POST("/tenders/", h.CreateDraft)
 	api.PUT("/tenders/", h.UpdateTender)
-	api.GET("/tenders/form/:id", h.FormTenderRequest)
-	api.GET("tender/reject/:id", h.RejectTenderRequest)
-	api.GET("tender/finish/:id", h.FinishTenderRequest)
+	api.PUT("/tenders/form/:id", h.FormTenderRequest)
+	api.PUT("tenders/reject/:id", h.RejectTenderRequest)
+	api.PUT("tenders/finish/:id", h.FinishTenderRequest)
 	api.DELETE("/tenders/:id", h.DeleteTender)
 
 	//m-m
-	api.DELETE("/transacion-request-company/company/:id", h.DeleteCompanyFromRequest)
-
+	api.DELETE("/tender-request-company/company/:id", h.DeleteCompanyFromRequest)
+	api.PUT("/tender-request-company/", h.UpdateTenderCompany)
 	registerStatic(router)
 }
 

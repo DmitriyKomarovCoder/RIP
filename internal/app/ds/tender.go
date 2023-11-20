@@ -2,13 +2,10 @@ package ds
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // СТАТУС ТЕНДЕРА
 type Tender struct {
-	gorm.Model
 	ID             uint      `json:"id" grom:"primary_key"`
 	Name           string    `json:"application_name" gorm:"type:varchar(255)"`
 	Status         string    `json:"status" gorm:"type:varchar(15)"`
