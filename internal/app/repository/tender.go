@@ -4,6 +4,7 @@ import (
 	"RIP/internal/app/ds"
 	"RIP/internal/app/utils"
 	"errors"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -168,7 +169,6 @@ func (r *Repository) DeleteTenderByID(requestID uint) error { // ?
 	var req ds.Tender
 	res := r.db.
 		Where("id = ?", requestID). // ??
-		Where("status in (?)", "черновик", "сформирован").
 		Take(&req)
 
 	if res.Error != nil {
@@ -179,36 +179,34 @@ func (r *Repository) DeleteTenderByID(requestID uint) error { // ?
 	}
 
 	req.Status = "удалён"
+	delTime := time.Now()
 	req.CompletionDate = time.Now()
 	if err := r.db.Save(&req).Error; err != nil {
+		return err
+	}
+	if err := r.db.Model(&req).Update("deleted_at", delTime).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *Repository) DeleteCompanyFromRequest(userId, companyId uint) (ds.Tender, []ds.Company, error) {
-	var request ds.Tender
-	r.db.Where("user_id = ? and status = 'сформирован'", userId).First(&request)
-
-	if request.ID == 0 {
-		return ds.Tender{}, nil, errors.New("no such request")
+func (r *Repository) DeleteCompanyFromRequest(deleteFromTender ds.TenderCompany) (ds.Tender, []ds.Company, error) {
+	var deletedCompanyTender ds.TenderCompany
+	result := r.db.Where("\"CompanyID\" = ? and \"TenderID\" = ?", deleteFromTender.CompanyID,
+		deleteFromTender.TenderID).Find(&deletedCompanyTender)
+	if result.Error != nil {
+		return ds.Tender{}, nil, result.Error
 	}
 
-	var companyRequesTender ds.TenderCompany
-	err := r.db.Where("CompanyID = ? AND TenderID = ?", companyId, request.ID).First(&companyRequesTender).Error
-	if err != nil {
-		return ds.Tender{}, nil, errors.New("такой компании нет в заявке")
+	if result.RowsAffected == 0 {
+		return ds.Tender{}, nil, fmt.Errorf("record not found")
 	}
-
-	err = r.db.Where("CompanyID = ? AND TenderID = ?", companyId, request.ID).
-		Delete(ds.Tender{}).Error
-
-	if err != nil {
+	if err := r.db.Delete(&deletedCompanyTender).Error; err != nil {
 		return ds.Tender{}, nil, err
 	}
 
-	return r.GetTenderWithDataByID(request.ID)
+	return r.GetTenderWithDataByID(deleteFromTender.TenderID)
 }
 
 func (r *Repository) UpdateTenderCompany(tenderID uint, companyID uint, cash float64) error {

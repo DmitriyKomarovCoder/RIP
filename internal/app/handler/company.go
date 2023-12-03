@@ -78,7 +78,7 @@ func (h *Handler) DeleteCompany(ctx *gin.Context) {
 		h.errorHandler(ctx, http.StatusInternalServerError, err)
 	}
 
-	ctx.JSON(http.StatusOK, "threat deleted successfully")
+	ctx.JSON(http.StatusOK, "company deleted successfully")
 }
 
 func (h *Handler) AddCompany(ctx *gin.Context) {

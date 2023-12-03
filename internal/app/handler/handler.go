@@ -36,7 +36,7 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	api.POST("/companies", h.AddCompany)
 	api.PUT("/companies/:id", h.UpdateCompany)
 	api.DELETE("/companies/:id", h.DeleteCompany)
-	api.PUT("/companies/request/:id", h.AddCompanyToRequest)
+	api.POST("/companies/request/:id", h.AddCompanyToRequest)
 
 	// заявки
 	api.GET("/tenders", h.TenderList)
@@ -49,7 +49,7 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	api.DELETE("/tenders/:id", h.DeleteTender)
 
 	//m-m
-	api.DELETE("/tender-request-company/company/:id", h.DeleteCompanyFromRequest)
+	api.DELETE("/tender-request-company", h.DeleteCompanyFromRequest)
 	api.PUT("/tender-request-company/", h.UpdateTenderCompany)
 	registerStatic(router)
 }

@@ -111,14 +111,27 @@ func (h *Handler) FinishTenderRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, "завершена")
 }
 func (h *Handler) DeleteCompanyFromRequest(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	var deleteFromTender ds.TenderCompany
+	if err := c.BindJSON(&deleteFromTender); err != nil {
+		h.errorHandler(c, http.StatusBadRequest, err)
+		return
+	}
+	if deleteFromTender.TenderID <= 0 {
+		h.errorHandler(c, http.StatusBadRequest, errors.New("id не найден"))
+		return
+	}
 
-	request, companies, err := h.Repository.DeleteCompanyFromRequest(creatorID, uint(id))
+	if deleteFromTender.CompanyID <= 0 {
+		h.errorHandler(c, http.StatusBadRequest, errors.New("id не найден"))
+		return
+	}
+
+	request, companies, err := h.Repository.DeleteCompanyFromRequest(deleteFromTender)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Кампания удалена из заявки", "companies": companies, "monitoring-request": request})
+	c.JSON(http.StatusOK, gin.H{"message": "Компания удалена из заявки", "companies": companies, "monitoring-request": request})
 }
 
 func (h *Handler) DeleteTender(c *gin.Context) {

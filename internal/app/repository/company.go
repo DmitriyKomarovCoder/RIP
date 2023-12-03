@@ -4,6 +4,7 @@ import (
 	"RIP/internal/app/ds"
 	"errors"
 	"strings"
+	"time"
 )
 
 func (r *Repository) GetOpenCompanys() (*[]ds.Company, error) {
@@ -47,6 +48,10 @@ func (r *Repository) DeleteCompany(id uint) error {
 	}
 
 	if err := r.db.Model(&company).Update("status", "удален").Error; err != nil {
+		return err
+	}
+
+	if err := r.db.Model(&company).Update("deleted_at", time.Now()).Error; err != nil {
 		return err
 	}
 

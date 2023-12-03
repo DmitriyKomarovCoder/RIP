@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// СТАТУС ТЕНДЕРА
+// ЗАЯВКА ТЕНДЕРА
 type Tender struct {
 	ID             uint      `json:"id" grom:"primary_key"`
 	Name           string    `json:"application_name" gorm:"type:varchar(255)"`
