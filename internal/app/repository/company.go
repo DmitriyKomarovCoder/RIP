@@ -2,6 +2,7 @@ package repository
 
 import (
 	"RIP/internal/app/ds"
+	"RIP/internal/app/utils"
 	"errors"
 	"strings"
 	"time"
@@ -109,7 +110,7 @@ func (r *Repository) AddCompanyToDraft(dataID uint, creatorID uint) (uint, error
 
 	// получаем черновик
 	var draftReq ds.Tender
-	res := r.db.Where("user_id = ?", creatorID).Where("status != ?", "удалён").Take(&draftReq)
+	res := r.db.Where("user_id = ?", creatorID).Where("status = ?", utils.Draft).Take(&draftReq)
 
 	// создаем черновик, если его нет
 	if res.RowsAffected == 0 {

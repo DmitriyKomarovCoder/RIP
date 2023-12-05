@@ -41,7 +41,7 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	// заявки
 	api.GET("/tenders", h.TenderList)
 	api.GET("/tenders/:id", h.GetTenderById)
-	api.POST("/tenders/", h.CreateDraft)
+	//api.POST("/tenders/", h.CreateDraft)
 	api.PUT("/tenders/", h.UpdateTender)
 	api.PUT("/tenders/form/:id", h.FormTenderRequest)
 	api.PUT("tenders/reject/:id", h.RejectTenderRequest)

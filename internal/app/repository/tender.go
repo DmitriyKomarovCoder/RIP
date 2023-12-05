@@ -10,19 +10,24 @@ import (
 	"gorm.io/gorm"
 )
 
-func (r *Repository) GetTenderDraftID(moderator_id uint) (*uint, error) {
-	var tenderReq ds.Tender
+func (r *Repository) GetTenderDraftID(creatorID uint) (*uint, error) {
+	var draftReq ds.Tender
 
-	err := r.db.First(&tenderReq, "moderator_id = ? and status = 'черновик'", moderator_id)
-	if err.Error != nil && err.Error != gorm.ErrRecordNotFound {
-		r.logger.Error("error while getting monitoring request draft", err)
-		return nil, err.Error
+	res := r.db.Where("user_id = ?", creatorID).Where("status = ?", utils.Draft).Take(&draftReq)
+	if errors.Is(gorm.ErrRecordNotFound, res.Error) {
+		return nil, nil
 	}
-	return &tenderReq.ID, nil
+
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return &draftReq.ID, nil
 }
 
 func (r *Repository) CreateTenderDraft(creatorID uint) (uint, error) {
 	request := ds.Tender{
+		ModeratorID:  creatorID, // просто заглушка, потом придумаю, как сделать норм
 		UserID:       creatorID,
 		Status:       "черновик",
 		CreationDate: r.db.NowFunc(),
@@ -107,11 +112,12 @@ func (r *Repository) UpdateTender(updatedTender *ds.Tender) error {
 	return result.Error
 }
 
-func (r *Repository) FormTenderRequestByID(requestID uint) error {
+func (r *Repository) FormTenderRequestByID(requestID uint, creatorID uint) error {
 	var req ds.Tender
 	res := r.db.
 		Where("id = ?", requestID).
-		Where("status = ?", "черновик").
+		Where("user_id = ?", creatorID).
+		Where("status = ?", utils.Draft).
 		Take(&req)
 
 	if res.Error != nil {
@@ -122,7 +128,7 @@ func (r *Repository) FormTenderRequestByID(requestID uint) error {
 	}
 
 	req.Status = "сформирован"
-	req.CreationDate = time.Now()
+	req.FormationDate = time.Now()
 
 	if err := r.db.Save(&req).Error; err != nil {
 		return err

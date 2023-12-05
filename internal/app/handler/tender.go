@@ -71,7 +71,7 @@ func (h *Handler) CreateDraft(c *gin.Context) {
 func (h *Handler) FormTenderRequest(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
-	err := h.Repository.FormTenderRequestByID(uint(id))
+	err := h.Repository.FormTenderRequestByID(uint(id), creatorID)
 	if err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
@@ -135,6 +135,7 @@ func (h *Handler) DeleteCompanyFromRequest(c *gin.Context) {
 }
 
 func (h *Handler) DeleteTender(c *gin.Context) {
+	//ModeratorID тут проверка, что это модератор -> 5 lab
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
 	err := h.Repository.DeleteTenderByID(uint(id))

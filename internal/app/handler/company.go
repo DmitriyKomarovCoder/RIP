@@ -18,7 +18,7 @@ func (h *Handler) CompaniesList(ctx *gin.Context) {
 		h.errorHandler(ctx, http.StatusNoContent, err)
 		return
 	}
-	draftID, err := h.Repository.GetTenderDraftID(moderatorID)
+	draftID, err := h.Repository.GetTenderDraftID(creatorID) // creatorID(UserID)
 	if err != nil {
 		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
