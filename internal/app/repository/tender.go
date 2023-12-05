@@ -27,7 +27,7 @@ func (r *Repository) GetTenderDraftID(creatorID uint) (*uint, error) {
 
 func (r *Repository) CreateTenderDraft(creatorID uint) (uint, error) {
 	request := ds.Tender{
-		ModeratorID:  creatorID, // просто заглушка, потом придумаю, как сделать норм
+		// ModeratorID:  creatorID, // просто заглушка, потом придумаю, как сделать норм
 		UserID:       creatorID,
 		Status:       "черновик",
 		CreationDate: r.db.NowFunc(),
