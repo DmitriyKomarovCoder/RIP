@@ -24,10 +24,12 @@ func (h *Handler) CompaniesList(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"companies": companies,
-		"draft_id":  draftID,
-	})
+	companiesList := ds.CompanyList{
+		DraftID:   *draftID,
+		Companies: companies,
+	}
+
+	h.successHandler(ctx, "companies", companiesList)
 }
 
 func (h *Handler) GetCompanyById(ctx *gin.Context) {
@@ -43,7 +45,8 @@ func (h *Handler) GetCompanyById(ctx *gin.Context) {
 		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
 	}
-	h.successHandler(ctx, "company", 200, company)
+
+	h.successHandler(ctx, "company", company)
 }
 
 func (h *Handler) DeleteCompany(ctx *gin.Context) {
@@ -124,7 +127,7 @@ func (h *Handler) AddCompany(ctx *gin.Context) {
 		return
 	}
 
-	h.successHandler(ctx, "city_id", 201, create_id)
+	h.successAddHandler(ctx, "company_id", create_id)
 }
 
 func (h *Handler) UpdateCompany(ctx *gin.Context) {
@@ -177,7 +180,14 @@ func (h *Handler) UpdateCompany(ctx *gin.Context) {
 		return
 	}
 
-	h.successHandler(ctx, "updated_company", 200, updatedCompany)
+	h.successHandler(ctx, "updated_company", gin.H{
+		"id":           updatedCompany.ID,
+		"company_name": updatedCompany.CompanyName,
+		"description":  updatedCompany.Description,
+		"image_url":    updatedCompany.ImageURL,
+		"status":       updatedCompany.Status,
+		"iin":          updatedCompany.IIN,
+	})
 }
 
 func (h *Handler) AddCompanyToRequest(ctx *gin.Context) {

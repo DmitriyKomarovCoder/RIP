@@ -2,6 +2,7 @@ package handler
 
 import (
 	"RIP/internal/app/repository"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go"
@@ -69,9 +70,16 @@ func (h *Handler) errorHandler(ctx *gin.Context, errorStatusCode int, err error)
 	})
 }
 
-func (h *Handler) successHandler(ctx *gin.Context, key string, status int, data interface{}) {
-	ctx.JSON(status, gin.H{
-		"status": status,
+func (h *Handler) successHandler(ctx *gin.Context, key string, data interface{}) {
+	ctx.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		key:      data,
+	})
+}
+
+func (h *Handler) successAddHandler(ctx *gin.Context, key string, data interface{}) {
+	ctx.JSON(http.StatusCreated, gin.H{
+		"status": "success",
 		key:      data,
 	})
 }
