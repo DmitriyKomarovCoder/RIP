@@ -25,11 +25,12 @@ func (h *Handler) CompaniesList(ctx *gin.Context) {
 	}
 
 	companiesList := ds.CompanyList{
-		DraftID:   *draftID,
+		DraftID:   draftID,
 		Companies: companies,
 	}
 
 	h.successHandler(ctx, "companies", companiesList)
+
 }
 
 func (h *Handler) GetCompanyById(ctx *gin.Context) {
@@ -111,23 +112,30 @@ func (h *Handler) AddCompany(ctx *gin.Context) {
 	}
 
 	file, header, err := ctx.Request.FormFile("image")
-	if err != http.ErrMissingFile && err != nil {
+	if err != nil && err != http.ErrMissingFile {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "ошибка при загрузке изображения"})
 		return
 	}
 
-	if newCompany.ImageURL, err = h.SaveImage(ctx.Request.Context(), file, header); err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "ошибка при сохранении изображения"})
-		return
+	if file != nil {
+		// Изображение предоставлено, обрабатываем его
+		newCompany.ImageURL, err = h.SaveImage(ctx.Request.Context(), file, header)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "ошибка при сохранении изображения"})
+			return
+		}
+	} else {
+		// Изображение не предоставлено, устанавливаем пустую строку или другое значение по умолчанию
+		newCompany.ImageURL = ""
 	}
 
-	create_id, err := h.Repository.AddCompany(&newCompany)
+	createID, err := h.Repository.AddCompany(&newCompany)
 	if err != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
 
-	h.successAddHandler(ctx, "company_id", create_id)
+	h.successAddHandler(ctx, "company_id", createID)
 }
 
 func (h *Handler) UpdateCompany(ctx *gin.Context) {

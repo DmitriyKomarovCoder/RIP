@@ -10,19 +10,19 @@ import (
 	"gorm.io/gorm"
 )
 
-func (r *Repository) GetTenderDraftID(creatorID uint) (*uint, error) {
+func (r *Repository) GetTenderDraftID(creatorID uint) (uint, error) {
 	var draftReq ds.Tender
 
 	res := r.db.Where("user_id = ?", creatorID).Where("status = ?", utils.Draft).Take(&draftReq)
 	if errors.Is(gorm.ErrRecordNotFound, res.Error) {
-		return nil, nil
+		return 0, nil
 	}
 
 	if res.Error != nil {
-		return nil, res.Error
+		return 0, res.Error
 	}
 
-	return &draftReq.ID, nil
+	return draftReq.ID, nil
 }
 
 func (r *Repository) CreateTenderDraft(creatorID uint) (uint, error) {
@@ -129,7 +129,7 @@ func (r *Repository) FormTenderRequestByID(requestID uint, creatorID uint) error
 
 	req.Status = "сформирован"
 	req.FormationDate = time.Now()
-
+	req.ModeratorID = 1
 	if err := r.db.Save(&req).Error; err != nil {
 		return err
 	}
