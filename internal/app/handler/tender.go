@@ -3,42 +3,19 @@ package handler
 import (
 	"RIP/internal/app/ds"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
-	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) TenderList(ctx *gin.Context) {
-	status := ctx.Query("status")
-	startDateStr := ctx.Query("start_date")
-	endDateStr := ctx.Query("end_date")
+	queryStatus, _ := ctx.GetQuery("status")
 
-	var startDate, endDate time.Time
-	var err error
+	queryStart, _ := ctx.GetQuery("start")
 
-	if startDateStr != "" {
-		startDate, err = time.Parse(time.DateTime, startDateStr)
-		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, err)
-			return
-		}
-	}
+	queryEnd, _ := ctx.GetQuery("end")
 
-	if endDateStr != "" {
-		endDate, err = time.Parse(time.DateTime, endDateStr)
-		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, err)
-			return
-		}
-
-		if endDate.Before(startDate) {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "end_date не может быть раньше, чем start_date"})
-			return
-		}
-	}
-	tenders, err := h.Repository.TenderList(status, startDate, endDate, ctx.GetInt(userCtx), ctx.GetBool(adminCtx))
+	tenders, err := h.Repository.TenderList(queryStatus, queryStart, queryEnd, ctx.GetInt(userCtx), ctx.GetBool(adminCtx))
 
 	if err != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, err)

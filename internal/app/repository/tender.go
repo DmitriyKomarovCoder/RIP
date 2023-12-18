@@ -78,73 +78,28 @@ func (r *Repository) GetTenderWithDataByID(requestID uint) (ds.Tender, []ds.Comp
 //	return monitoringRequests, nil
 //}
 
-func (r *Repository) TenderList(status string, startDate, endDate time.Time, userId int, isAdmin bool) ([]ds.Tender, error) {
+func (r *Repository) TenderList(status, start, end string, userId int, isAdmin bool) (*[]ds.Tender, error) {
 	var tender []ds.Tender
 	ending := "AND user_id = " + strconv.Itoa(userId)
 	if isAdmin {
 		ending = ""
 	}
+	query := r.db.Where("status != ? AND status != ?"+ending, "удален", "черновик")
 
 	if status != "" {
-		if startDate.IsZero() {
-			if endDate.IsZero() {
-				// фильтрация только по статусу
-				res := r.db.Where("status = ? AND status != 'удален'"+ending, status).Find(&tender)
-				//tenderRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
-				return tender, res.Error
-			}
-
-			// фильтрация по статусу и endDate
-			res := r.db.Where("status = ? AND status != 'удален'"+ending, status).Where("creation_date < ?", endDate).
-				Find(&tender)
-			//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
-			return tender, res.Error
-		}
-
-		// фильтрация по статусу и startDate
-		if endDate.IsZero() {
-			res := r.db.Where("status = ? AND status != 'удален'"+ending, status).Where("creation_date > ?", startDate).
-				Find(&tender)
-			//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
-			return tender, res.Error
-		}
-
-		// фильтрация по статусу, startDate и endDate
-		res := r.db.Where("status = ? AND status != 'удален'"+ending, status).Where("creation_date BETWEEN ? AND ?", startDate, endDate).
-			Find(&tender)
-		//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
-		return tender, res.Error
+		query = query.Where("status = ?", status)
 	}
 
-	if startDate.IsZero() {
-		if endDate.IsZero() {
-			// без фильтрации
-			res := r.db.Where("status <> ?"+ending, "удален").Find(&tender)
-			//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
-			return tender, res.Error
-		}
-
-		// фильтрация по endDate
-		res := r.db.Where("creation_date < ?"+ending, endDate).
-			Find(&tender)
-		//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
-		return tender, res.Error
+	if start != "" {
+		query = query.Where("creation_date >= ?", start)
 	}
 
-	if endDate.IsZero() {
-		// фильтрация по startDate
-		res := r.db.Where("creation_date > ?"+ending, startDate).
-			Find(&tender)
-		//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
-		return tender, res.Error
+	if end != "" {
+		query = query.Where("creation_date <= ?", end)
 	}
-
-	//фильтрация по startDate и endDate
-	res := r.db.Where("creation_date BETWEEN ? AND ?"+ending, startDate, endDate).
-		Find(&tender)
-	//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
-
-	return tender, res.Error
+	query = query.Order("id ASC")
+	result := query.Find(&tender)
+	return &tender, result.Error
 
 }
 
