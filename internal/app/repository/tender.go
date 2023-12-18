@@ -5,24 +5,25 @@ import (
 	"RIP/internal/app/utils"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
 )
 
-func (r *Repository) GetTenderDraftID(creatorID uint) (*uint, error) {
+func (r *Repository) GetTenderDraftID(creatorID int) (uint, error) {
 	var draftReq ds.Tender
 
 	res := r.db.Where("user_id = ?", creatorID).Where("status = ?", utils.Draft).Take(&draftReq)
 	if errors.Is(gorm.ErrRecordNotFound, res.Error) {
-		return nil, nil
+		return 0, nil
 	}
 
 	if res.Error != nil {
-		return nil, res.Error
+		return 0, res.Error
 	}
 
-	return &draftReq.ID, nil
+	return draftReq.ID, nil
 }
 
 func (r *Repository) CreateTenderDraft(creatorID uint) (uint, error) {
@@ -67,23 +68,84 @@ func (r *Repository) GetTenderWithDataByID(requestID uint) (ds.Tender, []ds.Comp
 	return request, dataService, nil
 }
 
-func (r *Repository) TenderList(status, start, end string) (*[]ds.Tender, error) {
+//func (r *Repository) GetUsersLoginForRequests(tenderRequests []ds.Tender) ([]ds.Tender, error) {
+//	for i := range tenderRequests {
+//		var user ds.User
+//		r.db.Select("login").Where("user_id = ?", tenderRequests[i].UserID).First(&user)
+//		tenderRequests[i].UserID = user.Login
+//		fmt.Println(monitoringRequests[i].Creator)
+//	}
+//	return monitoringRequests, nil
+//}
+
+func (r *Repository) TenderList(status string, startDate, endDate time.Time, userId int, isAdmin bool) ([]ds.Tender, error) {
 	var tender []ds.Tender
-	query := r.db.Where("status != ? AND status != ?", "удалён", "черновик")
+	ending := "AND user_id = " + strconv.Itoa(userId)
+	if isAdmin {
+		ending = ""
+	}
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		if startDate.IsZero() {
+			if endDate.IsZero() {
+				// фильтрация только по статусу
+				res := r.db.Where("status = ? AND status != 'удален'"+ending, status).Find(&tender)
+				//tenderRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
+				return tender, res.Error
+			}
+
+			// фильтрация по статусу и endDate
+			res := r.db.Where("status = ? AND status != 'удален'"+ending, status).Where("creation_date < ?", endDate).
+				Find(&tender)
+			//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
+			return tender, res.Error
+		}
+
+		// фильтрация по статусу и startDate
+		if endDate.IsZero() {
+			res := r.db.Where("status = ? AND status != 'удален'"+ending, status).Where("creation_date > ?", startDate).
+				Find(&tender)
+			//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
+			return tender, res.Error
+		}
+
+		// фильтрация по статусу, startDate и endDate
+		res := r.db.Where("status = ? AND status != 'удален'"+ending, status).Where("creation_date BETWEEN ? AND ?", startDate, endDate).
+			Find(&tender)
+		//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
+		return tender, res.Error
 	}
 
-	if start != "" {
-		query = query.Where("creation_date >= ?", start)
+	if startDate.IsZero() {
+		if endDate.IsZero() {
+			// без фильтрации
+			res := r.db.Where("status <> ?"+ending, "удален").Find(&tender)
+			//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
+			return tender, res.Error
+		}
+
+		// фильтрация по endDate
+		res := r.db.Where("creation_date < ?"+ending, endDate).
+			Find(&tender)
+		//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
+		return tender, res.Error
 	}
 
-	if end != "" {
-		query = query.Where("creation_date <= ?", end)
+	if endDate.IsZero() {
+		// фильтрация по startDate
+		res := r.db.Where("creation_date > ?"+ending, startDate).
+			Find(&tender)
+		//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
+		return tender, res.Error
 	}
-	result := query.Find(&tender)
-	return &tender, result.Error
+
+	//фильтрация по startDate и endDate
+	res := r.db.Where("creation_date BETWEEN ? AND ?"+ending, startDate, endDate).
+		Find(&tender)
+	//monitoringRequests, _ = r.GetUsersLoginForRequests(monitoringRequests)
+
+	return tender, res.Error
+
 }
 
 func (r *Repository) UpdateTender(updatedTender *ds.Tender) error {

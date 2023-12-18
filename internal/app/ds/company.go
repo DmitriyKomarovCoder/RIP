@@ -14,3 +14,7 @@ type CompanyList struct {
 	DraftID   uint       `json:"draft_id"`
 	Companies *[]Company `json:"companies_list"`
 }
+type AddToCompanyID struct {
+	CompanyID uint `json:"company"`
+	UserID    int  `json:"user_id"`
+}

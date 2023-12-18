@@ -1,8 +1,14 @@
 package handler
 
 import (
+	"RIP/internal/app/config"
+	"RIP/internal/app/ds"
+	"RIP/internal/app/pkg/auth"
+	"RIP/internal/app/pkg/hash"
+	"RIP/internal/app/redis"
 	"RIP/internal/app/repository"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go"
@@ -15,16 +21,31 @@ const (
 )
 
 type Handler struct {
-	Logger     *logrus.Logger
-	Repository *repository.Repository
-	Minio      *minio.Client
+	Logger       *logrus.Logger
+	Repository   *repository.Repository
+	Minio        *minio.Client
+	Config       *config.Config
+	Redis        *redis.Client
+	TokenManager auth.TokenManager
+	Hasher       hash.PasswordHasher
 }
 
-func NewHandler(l *logrus.Logger, r *repository.Repository, m *minio.Client) *Handler {
+func NewHandler(
+	l *logrus.Logger,
+	r *repository.Repository,
+	m *minio.Client,
+	conf *config.Config,
+	red *redis.Client,
+	tokenManager auth.TokenManager,
+) *Handler {
 	return &Handler{
-		Logger:     l,
-		Repository: r,
-		Minio:      m,
+		Logger:       l,
+		Repository:   r,
+		Minio:        m,
+		Config:       conf,
+		Redis:        red,
+		TokenManager: tokenManager,
+		Hasher:       hash.NewSHA256Hasher(os.Getenv("SALT")),
 	}
 }
 
@@ -34,20 +55,20 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	api.GET("/companies", h.CompaniesList)
 
 	api.GET("/companies/:id", h.GetCompanyById)
-	api.POST("/companies", h.AddCompany)
-	api.PUT("/companies/:id", h.UpdateCompany)
-	api.DELETE("/companies/:id", h.DeleteCompany)
-	api.POST("/companies/request/:id", h.AddCompanyToRequest)
+	api.POST("/companies", h.WithAuthCheck([]ds.Role{ds.Admin}), h.AddCompany)
+	api.PUT("/companies/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateCompany)
+	api.DELETE("/companies/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.DeleteCompany)
+	api.POST("/companies/request/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.AddCompanyToRequest)
 
 	// заявки
-	api.GET("/tenders", h.TenderList)
-	api.GET("/tenders/:id", h.GetTenderById)
+	api.GET("/tenders", h.WithAuthCheck([]ds.Role{ds.Admin, ds.Client}), h.TenderList)
+	api.GET("/tenders/:id", h.WithAuthCheck([]ds.Role{ds.Client, ds.Admin}), h.GetTenderById)
 	//api.POST("/tenders/", h.CreateDraft)
-	api.PUT("/tenders/", h.UpdateTender)
-	api.PUT("/tenders/form/:id", h.FormTenderRequest)
-	api.PUT("tenders/reject/:id", h.RejectTenderRequest)
-	api.PUT("tenders/finish/:id", h.FinishTenderRequest)
-	api.DELETE("/tenders/:id", h.DeleteTender)
+	api.PUT("/tenders/", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateTender)
+	api.PUT("/tenders/form/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.FormTenderRequest)
+	api.PUT("tenders/reject/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.RejectTenderRequest)
+	api.PUT("tenders/finish/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.FinishTenderRequest)
+	api.DELETE("/tenders/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.DeleteTender)
 
 	//m-m
 	api.DELETE("/tender-request-company", h.DeleteCompanyFromRequest)

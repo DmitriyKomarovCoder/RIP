@@ -5,18 +5,40 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) TenderList(ctx *gin.Context) {
-	queryStatus, _ := ctx.GetQuery("status")
+	status := ctx.Query("status")
+	startDateStr := ctx.Query("start_date")
+	endDateStr := ctx.Query("end_date")
 
-	queryStart, _ := ctx.GetQuery("start")
+	var startDate, endDate time.Time
+	var err error
 
-	queryEnd, _ := ctx.GetQuery("end")
+	if startDateStr != "" {
+		startDate, err = time.Parse(time.DateTime, startDateStr)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, err)
+			return
+		}
+	}
 
-	tenders, err := h.Repository.TenderList(queryStatus, queryStart, queryEnd)
+	if endDateStr != "" {
+		endDate, err = time.Parse(time.DateTime, endDateStr)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, err)
+			return
+		}
+
+		if endDate.Before(startDate) {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "end_date не может быть раньше, чем start_date"})
+			return
+		}
+	}
+	tenders, err := h.Repository.TenderList(status, startDate, endDate, ctx.GetInt(userCtx), ctx.GetBool(adminCtx))
 
 	if err != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, err)

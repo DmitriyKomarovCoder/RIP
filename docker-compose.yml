@@ -47,6 +47,15 @@ services:
       - data4-1:/data1
       - data4-2:/data2
 
+  redis:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning --requirepass password
+    volumes:
+      - redis-data:/data
+
   nginx:
     image: nginx:1.19.2-alpine
     hostname: nginx

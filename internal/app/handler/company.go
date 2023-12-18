@@ -18,14 +18,14 @@ func (h *Handler) CompaniesList(ctx *gin.Context) {
 		h.errorHandler(ctx, http.StatusNoContent, err)
 		return
 	}
-	draftID, err := h.Repository.GetTenderDraftID(creatorID) // creatorID(UserID)
+	draftID, err := h.Repository.GetTenderDraftID(ctx.GetInt(userCtx)) // creatorID(UserID)
 	if err != nil {
 		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
 	}
 
 	companiesList := ds.CompanyList{
-		DraftID:   *draftID,
+		DraftID:   draftID,
 		Companies: companies,
 	}
 
@@ -191,9 +191,18 @@ func (h *Handler) UpdateCompany(ctx *gin.Context) {
 }
 
 func (h *Handler) AddCompanyToRequest(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	var request ds.AddToCompanyID
 
-	draftID, err := h.Repository.AddCompanyToDraft(uint(id), creatorID)
+	request.UserID = ctx.GetInt(userCtx)
+	idStr := ctx.Param("id")
+	request.CompanyID = uint(ctx.GetInt(idStr))
+
+	if request.CompanyID == 0 {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "услуга не может быть пустой"})
+		return
+	}
+
+	draftID, err := h.Repository.AddCompanyToDraft(request.CompanyID, uint(request.UserID))
 
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err})

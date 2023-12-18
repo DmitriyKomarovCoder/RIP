@@ -1,7 +1,25 @@
 package ds
 
+import (
+	"time"
+)
+
 type User struct {
-	ID            uint   `json:"id" gorm:"primary_key"`
-	ModeratorName string `json:"moderator_name" gorm:"type:varchar(50)"`
-	IsModerator   bool   `json:"is_moderator" gorm:"type:bool"`
+	UserId           int    `gorm:"primaryKey"`
+	Login            string `json:"login" binding:"required,max=64"`
+	IsAdmin          bool
+	Name             string `json:"name"`
+	Password         string `json:"password" binding:"required,min=8,max=64"`
+	RegistrationDate time.Time
+}
+
+type UserLogin struct {
+	Login    string `json:"login" binding:"required,max=64"`
+	Password string `json:"password" binding:"required,min=8,max=64"`
+}
+
+type UserSignUp struct {
+	Login    string `json:"login" binding:"required,max=64"`
+	Name     string `json:"name"`
+	Password string `json:"password" binding:"required,min=8,max=64"`
 }

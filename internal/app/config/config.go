@@ -1,7 +1,9 @@
 package config
 
 import (
+	"github.com/golang-jwt/jwt"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -14,7 +16,31 @@ import (
 type Config struct {
 	ServiceHost string
 	ServicePort int
+	JWT         JWTConfig
+	Redis       RedisConfig
 }
+
+type JWTConfig struct {
+	Token         string
+	ExpiresIn     time.Duration
+	SigningMethod jwt.SigningMethod
+}
+
+type RedisConfig struct {
+	Host        string
+	Password    string
+	Port        int
+	User        string
+	DialTimeout time.Duration
+	ReadTimeout time.Duration
+}
+
+const (
+	envRedisHost = "REDIS_HOST"
+	envRedisPort = "REDIS_PORT"
+	envRedisUser = "REDIS_USER"
+	envRedisPass = "REDIS_PASSWORD"
+)
 
 // NewConfig Создаёт новый объект конфигурации, загружая данные из файла конфигурации
 func NewConfig(log *logrus.Logger) (*Config, error) {

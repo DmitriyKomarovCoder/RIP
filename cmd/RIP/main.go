@@ -5,14 +5,23 @@ import (
 	"RIP/internal/app/dsn"
 	"RIP/internal/app/handler"
 	app "RIP/internal/app/pkg"
+	"RIP/internal/app/pkg/auth"
+	"RIP/internal/app/redis"
 	"RIP/internal/app/repository"
 	Minio "RIP/internal/app/s3/minio"
-	"fmt"
-
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"os"
 )
 
+// @title Tender App
+// @version 1.0
+// @description App for serving tender requests
+
+// @host localhost:8080
+// @schemes http
+// @BasePath /
 func main() {
 	logger := logrus.New()
 	minioClient := Minio.NewMinioClient(logger)
@@ -24,17 +33,29 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Error with configuration reading: %s", err)
 	}
+
+	ctx := context.Background()
+	redisClient, errRedis := redis.New(ctx, conf.Redis)
+	if errRedis != nil {
+		logger.Fatalf("Errof with redis connect: %s", err)
+	}
+
 	postgresString, errPost := dsn.FromEnv()
 	if errPost != nil {
 		logger.Fatalf("Error of reading postgres line: %s", errPost)
 	}
-	fmt.Println(postgresString)
+
 	rep, errRep := repository.NewRepository(postgresString, logger)
 	if errRep != nil {
 		logger.Fatalf("Error from repository: %s", err)
 	}
 
-	hand := handler.NewHandler(logger, rep, minioClient)
+	tokenManager, err := auth.NewManager(os.Getenv("TOKEN_SECRET"))
+	if err != nil {
+		logger.Fatalln(err)
+	}
+
+	hand := handler.NewHandler(logger, rep, minioClient, conf, redisClient, tokenManager)
 	application := app.NewApp(conf, router, logger, hand)
 	application.RunApp()
 }
