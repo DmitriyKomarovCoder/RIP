@@ -2,13 +2,11 @@ package handler
 
 import (
 	"RIP/internal/app/repository"
-	swaggerFiles "github.com/swaggo/files"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go"
 	"github.com/sirupsen/logrus"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 const (
@@ -31,7 +29,6 @@ func NewHandler(l *logrus.Logger, r *repository.Repository, m *minio.Client) *Ha
 }
 
 func (h *Handler) RegisterHandler(router *gin.Engine) {
-	router.GET("swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	api := router.Group("/api")
 	// услуги
 	api.GET("/companies", h.CompaniesList)
