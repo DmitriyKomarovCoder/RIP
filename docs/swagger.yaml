@@ -1,0 +1,589 @@
+basePath: /
+definitions:
+  ds.Company:
+    properties:
+      company_id:
+        type: integer
+      description:
+        type: string
+      iin:
+        type: string
+      image_url:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+    type: object
+  ds.CompanyList:
+    properties:
+      companies_list:
+        items:
+          $ref: '#/definitions/ds.Company'
+        type: array
+      draft_id:
+        type: integer
+    type: object
+  ds.NewStatus:
+    properties:
+      status:
+        type: string
+    type: object
+  ds.Tender:
+    properties:
+      application_name:
+        type: string
+      completion_date:
+        type: string
+      creation_date:
+        type: string
+      formation_date:
+        type: string
+      id:
+        type: integer
+      moderator:
+        $ref: '#/definitions/ds.User'
+      moderator_id:
+        type: integer
+      status:
+        type: string
+      user:
+        $ref: '#/definitions/ds.User'
+      user_id:
+        type: integer
+    type: object
+  ds.TenderCompany:
+    properties:
+      application:
+        $ref: '#/definitions/ds.Company'
+      cash:
+        type: number
+      company_id:
+        type: integer
+      tender:
+        $ref: '#/definitions/ds.Tender'
+      tender_id:
+        type: integer
+    type: object
+  ds.TenderDetails:
+    properties:
+      companies:
+        items:
+          $ref: '#/definitions/ds.Company'
+        type: array
+      tender:
+        $ref: '#/definitions/ds.Tender'
+    type: object
+  ds.User:
+    properties:
+      isAdmin:
+        type: boolean
+      login:
+        maxLength: 64
+        type: string
+      name:
+        type: string
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+      registrationDate:
+        type: string
+      userId:
+        type: integer
+    required:
+    - login
+    - password
+    type: object
+  ds.UserLogin:
+    properties:
+      login:
+        maxLength: 64
+        type: string
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+    required:
+    - login
+    - password
+    type: object
+  ds.UserSignUp:
+    properties:
+      login:
+        maxLength: 64
+        type: string
+      name:
+        type: string
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+    required:
+    - login
+    - password
+    type: object
+host: 127.0.0.1:8080
+info:
+  contact: {}
+  description: App for serving tender requests
+  title: Tender App
+  version: "1.0"
+paths:
+  /api/companies:
+    get:
+      consumes:
+      - application/json
+      description: Companies List
+      parameters:
+      - description: Query string to filter companies by name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ds.CompanyList'
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Companies List
+      tags:
+      - Companies
+    post:
+      consumes:
+      - multipart/form-data
+      description: Add a new company with image, name, IIN
+      parameters:
+      - description: Company image
+        in: formData
+        name: image
+        required: true
+        type: file
+      - description: Company name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Company description
+        in: formData
+        name: description
+        type: string
+      - description: Company IIN
+        in: formData
+        name: IIN
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Add new company
+      tags:
+      - Companies
+  /api/companies/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a company with the given ID
+      parameters:
+      - description: Company ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Delete company by ID
+      tags:
+      - Companies
+    get:
+      consumes:
+      - application/json
+      description: Company By ID
+      parameters:
+      - description: Companies ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ds.Company'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Company By ID
+      tags:
+      - Companies
+    put:
+      consumes:
+      - multipart/form-data
+      description: Updates a company with the given ID
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: name
+        in: formData
+        name: name
+        type: string
+      - description: description
+        in: formData
+        name: description
+        type: string
+      - description: IIN
+        in: formData
+        name: IIN
+        type: string
+      - description: image
+        in: formData
+        name: image
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Update company by ID
+      tags:
+      - Companies
+  /api/tender-request-company:
+    put:
+      consumes:
+      - application/json
+      description: Update money Tender Company by client
+      parameters:
+      - description: Update money Tender Company
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/ds.TenderCompany'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: update
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Update money Tender Company
+      tags:
+      - Tender_Company
+  /api/tender-request-company/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a company from a request based on the user ID and company
+        ID
+      parameters:
+      - description: company ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Delete company from request
+      tags:
+      - Tender_Company
+  /api/tenders:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a tender request for the given user ID
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Delete tender request by user ID
+      tags:
+      - Tenders
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of tender requests based on the provided parameters
+      parameters:
+      - description: Tender request status
+        in: query
+        name: status
+        type: string
+      - description: Start date in the format '2006-01-02T15:04:05Z'
+        in: query
+        name: start
+        type: string
+      - description: End date in the format '2006-01-02T15:04:05Z'
+        in: query
+        name: end
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ds.Tender'
+            type: array
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get list of tender requests
+      tags:
+      - Tenders
+    put:
+      consumes:
+      - application/json
+      description: Update Tender by admin
+      parameters:
+      - description: updated Assembly
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/ds.Tender'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Update Tender by admin
+      tags:
+      - Tenders
+  /api/tenders/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a tender request with the given ID
+      parameters:
+      - description: Tender Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ds.TenderDetails'
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Get tender request by ID
+      tags:
+      - Tenders
+  /api/tenders/form/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Updates the status of a transaction request with the given ID on
+        "завершен"/"отклонен"
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: update status
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/ds.NewStatus'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Update transaction request status by ID
+      tags:
+      - Tenders
+  /api/user/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logs out the user by blacklisting the access token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Logout
+      tags:
+      - Authentication
+  /api/user/signIn:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and generates an access token
+      parameters:
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/ds.UserLogin'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: User sign-in
+      tags:
+      - Authentication
+  /api/user/signUp:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account
+      parameters:
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/ds.UserSignUp'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+        "409":
+          description: Conflict
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Sign up a new user
+      tags:
+      - Authentication
+  /companies/request/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Adds a company to a tender request
+      parameters:
+      - description: Threat ID
+        in: path
+        name: threatId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Add company to request
+      tags:
+      - Companies
+schemes:
+- http
+swagger: "2.0"

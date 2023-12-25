@@ -2,5 +2,6 @@ ServiceHost = "127.0.0.1" # просто ключ значение
 ServicePort = 8080
 
 [Redis]
+
 DialTimeout = "10s"
 ReadTimeout = "10s"

@@ -40,32 +40,33 @@ func (r *Repository) CreateTenderDraft(creatorID uint) (uint, error) {
 	return request.ID, nil
 }
 
-func (r *Repository) GetTenderWithDataByID(requestID uint) (ds.Tender, []ds.Company, error) {
-	if requestID == 0 {
-		return ds.Tender{}, nil, errors.New("record not found")
+func (r *Repository) GetTenderWithDataByID(requestID uint, userId uint, isAdmin bool) (ds.Tender, []ds.Company, error) {
+	var TenderRequest ds.Tender
+	var companies []ds.Company
+
+	//ищем такую заявку
+	result := r.db.First(&TenderRequest, "id =?", requestID)
+	if result.Error != nil {
+		r.logger.Error("error while getting monitoring request")
+		return ds.Tender{}, nil, result.Error
+	}
+	if !isAdmin && TenderRequest.UserID == uint(userId) || isAdmin {
+		res := r.db.
+			Table("tender_companies").
+			Select("companies.*").
+			Where("status != ?", "удалён").
+			Joins("JOIN companies ON tender_companies.\"CompanyID\" = companies.id").
+			Where("tender_companies.\"TenderID\" = ?", requestID).
+			Find(&companies)
+		if res.Error != nil {
+			r.logger.Error("error while getting for tender request")
+			return ds.Tender{}, nil, res.Error
+		}
+	} else {
+		return ds.Tender{}, nil, errors.New("ошибка доступа к данной заявке")
 	}
 
-	request := ds.Tender{ID: requestID}
-	res := r.db.Take(&request)
-	if err := res.Error; err != nil {
-		return ds.Tender{}, nil, err
-	}
-
-	var dataService []ds.Company
-
-	res = r.db.
-		Table("tender_companies").
-		Select("companies.*").
-		Where("status != ?", "удалён").
-		Joins("JOIN companies ON tender_companies.\"CompanyID\" = companies.id").
-		Where("tender_companies.\"TenderID\" = ?", requestID).
-		Find(&dataService)
-
-	if err := res.Error; err != nil {
-		return ds.Tender{}, nil, err
-	}
-
-	return request, dataService, nil
+	return TenderRequest, companies, nil
 }
 
 //func (r *Repository) GetUsersLoginForRequests(tenderRequests []ds.Tender) ([]ds.Tender, error) {
@@ -154,15 +155,15 @@ func (r *Repository) FormTenderRequestByID(requestID uint, creatorID uint) error
 	return nil
 }
 
-func (r *Repository) RejectTenderRequestByID(requestID, moderatorID uint) error {
-	return r.finishRejectHelper("отклонён", requestID, moderatorID)
-}
+//func (r *Repository) RejectTenderRequestByID(requestID, moderatorID uint) error {
+//	return r.finishRejectHelper("отклонён", requestID, moderatorID)
+//}
+//
+//func (r *Repository) FinishEncryptDecryptRequestByID(requestID, moderatorID uint) error {
+//	return r.finishRejectHelper("завершён", requestID, moderatorID)
+//}
 
-func (r *Repository) FinishEncryptDecryptRequestByID(requestID, moderatorID uint) error {
-	return r.finishRejectHelper("завершён", requestID, moderatorID)
-}
-
-func (r *Repository) finishRejectHelper(status string, requestID, moderatorID uint) error {
+func (r *Repository) FinishRejectHelper(status string, requestID, moderatorID uint) error {
 	var req ds.Tender
 	res := r.db.
 		Where("id = ?", requestID).
@@ -191,7 +192,7 @@ func (r *Repository) finishRejectHelper(status string, requestID, moderatorID ui
 func (r *Repository) DeleteTenderByID(requestID uint) error { // ?
 	var req ds.Tender
 	res := r.db.
-		Where("id = ?", requestID). // ??
+		Where("user_id = ?", requestID). // ??
 		Take(&req)
 
 	if res.Error != nil {
@@ -214,10 +215,16 @@ func (r *Repository) DeleteTenderByID(requestID uint) error { // ?
 	return nil
 }
 
-func (r *Repository) DeleteCompanyFromRequest(deleteFromTender ds.TenderCompany) (ds.Tender, []ds.Company, error) {
-	var deletedCompanyTender ds.TenderCompany
-	result := r.db.Where("\"CompanyID\" = ? and \"TenderID\" = ?", deleteFromTender.CompanyID,
-		deleteFromTender.TenderID).Find(&deletedCompanyTender)
+func (r *Repository) DeleteCompanyFromRequest(userId uint, companyID uint) (ds.Tender, []ds.Company, error) {
+	var request ds.Tender
+	r.db.Where("user_id = ?", userId).First(&request)
+
+	if request.ID == 0 {
+		return ds.Tender{}, nil, errors.New("no such request")
+	}
+	var company ds.Company
+	result := r.db.Where("\"CompanyID\" = ? and \"TenderID\" = ?", companyID,
+		request.ID).Find(&company)
 	if result.Error != nil {
 		return ds.Tender{}, nil, result.Error
 	}
@@ -225,11 +232,11 @@ func (r *Repository) DeleteCompanyFromRequest(deleteFromTender ds.TenderCompany)
 	if result.RowsAffected == 0 {
 		return ds.Tender{}, nil, fmt.Errorf("record not found")
 	}
-	if err := r.db.Delete(&deletedCompanyTender).Error; err != nil {
+	if err := r.db.Delete(&request).Error; err != nil {
 		return ds.Tender{}, nil, err
 	}
 
-	return r.GetTenderWithDataByID(deleteFromTender.TenderID)
+	return r.GetTenderWithDataByID(request.ID, userId, false)
 }
 
 func (r *Repository) UpdateTenderCompany(tenderID uint, companyID uint, cash float64) error {

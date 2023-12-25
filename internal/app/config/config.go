@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"github.com/golang-jwt/jwt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -70,6 +72,16 @@ func NewConfig(log *logrus.Logger) (*Config, error) {
 	}
 
 	log.Info("config parsed")
+	cfg.JWT.Token = "test"
+	cfg.JWT.ExpiresIn = time.Hour
+	cfg.JWT.SigningMethod = jwt.SigningMethodHS256
 
+	cfg.Redis.Host = os.Getenv(envRedisHost)
+	cfg.Redis.Port, err = strconv.Atoi(os.Getenv(envRedisPort))
+	if err != nil {
+		return nil, fmt.Errorf("redis port must be int value: %w", err)
+	}
+	cfg.Redis.Password = os.Getenv(envRedisPass)
+	cfg.Redis.User = os.Getenv(envRedisUser)
 	return cfg, nil
 }

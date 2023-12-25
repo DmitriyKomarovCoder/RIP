@@ -17,3 +17,12 @@ type Tender struct {
 	UserID         uint      `json:"user_id"`
 	User           User      `json:"user" gorm:"foreignkey:UserID"`
 }
+
+type NewStatus struct {
+	Status string `json:"status"`
+}
+
+type TenderDetails struct {
+	Tender  *Tender    `json:"tender"`
+	Company *[]Company `json:"companies"`
+}

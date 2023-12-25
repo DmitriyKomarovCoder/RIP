@@ -1,12 +1,15 @@
 package handler
 
 import (
+	_ "RIP/docs"
 	"RIP/internal/app/config"
 	"RIP/internal/app/ds"
 	"RIP/internal/app/pkg/auth"
 	"RIP/internal/app/pkg/hash"
 	"RIP/internal/app/redis"
 	"RIP/internal/app/repository"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"net/http"
 	"os"
 
@@ -50,10 +53,11 @@ func NewHandler(
 }
 
 func (h *Handler) RegisterHandler(router *gin.Engine) {
+	router.GET("swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	api := router.Group("/api")
 	// услуги
 	api.GET("/companies", h.CompaniesList)
-
 	api.GET("/companies/:id", h.GetCompanyById)
 	api.POST("/companies", h.WithAuthCheck([]ds.Role{ds.Admin}), h.AddCompany)
 	api.PUT("/companies/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateCompany)
@@ -63,17 +67,25 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	// заявки
 	api.GET("/tenders", h.WithAuthCheck([]ds.Role{ds.Admin, ds.Client}), h.TenderList)
 	api.GET("/tenders/:id", h.WithAuthCheck([]ds.Role{ds.Client, ds.Admin}), h.GetTenderById)
-	//api.POST("/tenders/", h.CreateDraft)
-	api.PUT("/tenders/", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateTender)
-	api.PUT("/tenders/form/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.FormTenderRequest)
-	api.PUT("tenders/reject/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.RejectTenderRequest)
-	api.PUT("tenders/finish/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.FinishTenderRequest)
-	api.DELETE("/tenders/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.DeleteTender)
+	// api.POST("/tenders/", h.CreateDraft)
+	api.PUT("/tenders", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateTender)
 
-	//m-m
-	api.DELETE("/tender-request-company", h.DeleteCompanyFromRequest)
-	api.PUT("/tender-request-company/", h.UpdateTenderCompany)
+	// статусы
+	api.PUT("/tenders/form/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.FormTenderRequest)
+	api.PUT("/tenders/updateStatus", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateStatusTenderRequest)
+	//api.PUT("/tenders/finish/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.FinishTenderRequest)
+
+	api.DELETE("/tenders", h.WithAuthCheck([]ds.Role{ds.Client}), h.DeleteTender)
+
+	// m-m
+	api.DELETE("/tender-request-company/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.DeleteCompanyFromRequest)
+	api.PUT("/tender-request-company", h.UpdateTenderCompany)
 	registerStatic(router)
+
+	// auth && reg
+	api.POST("/user/signIn", h.SignIn)
+	api.POST("/user/signUp", h.SignUp)
+	api.POST("/user/logout", h.Logout)
 }
 
 func registerStatic(router *gin.Engine) {

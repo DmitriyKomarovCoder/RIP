@@ -11,6 +11,16 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// CompaniesList godoc
+// @Summary      Companies List
+// @Description  Companies List
+// @Tags         Companies
+// @Accept       json
+// @Produce      json
+// @Param        name query   string  false  "Query string to filter companies by name"
+// @Success      200          {object}  ds.CompanyList
+// @Failure      500          {object}  error
+// @Router       /api/companies [get]
 func (h *Handler) CompaniesList(ctx *gin.Context) {
 	queryText, _ := ctx.GetQuery("company_name")
 	companies, err := h.Repository.CompaniesList(queryText)
@@ -32,6 +42,17 @@ func (h *Handler) CompaniesList(ctx *gin.Context) {
 	h.successHandler(ctx, "companies", companiesList)
 }
 
+// GetCompanyById godoc
+// @Summary      Company By ID
+// @Description  Company By ID
+// @Tags         Companies
+// @Accept       json
+// @Produce      json
+// @Param        id   path    int     true        "Companies ID"
+// @Success      200          {object}  ds.Company
+// @Failure      400          {object}  error
+// @Failure      500          {object}  error
+// @Router       /api/companies/{id} [get]
 func (h *Handler) GetCompanyById(ctx *gin.Context) {
 	//queryText, _ := ctx.GetQuery("company_name")
 
@@ -49,6 +70,16 @@ func (h *Handler) GetCompanyById(ctx *gin.Context) {
 	h.successHandler(ctx, "company", company)
 }
 
+// DeleteCompany godoc
+// @Summary      Delete company by ID
+// @Description  Deletes a company with the given ID
+// @Tags         Companies
+// @Accept       json
+// @Produce      json
+// @Param        id  path  int  true  "Company ID"
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  error
+// @Router       /api/companies/{id} [delete]
 func (h *Handler) DeleteCompany(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
 	if err != nil {
@@ -84,6 +115,19 @@ func (h *Handler) DeleteCompany(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, "company deleted successfully")
 }
 
+// AddCompany godoc
+// @Summary      Add new company
+// @Description  Add a new company with image, name, IIN
+// @Tags         Companies
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        image formData file true "Company image"
+// @Param        name formData string true "Company name"
+// @Param        description formData string false "Company description"
+// @Param        IIN formData integer true "Company IIN"
+// @Success      201  {string}  map[string]any
+// @Failure      400  {object}  map[string]any
+// @Router       /api/companies [post]
 func (h *Handler) AddCompany(ctx *gin.Context) {
 	var newCompany ds.Company
 
@@ -130,6 +174,20 @@ func (h *Handler) AddCompany(ctx *gin.Context) {
 	h.successAddHandler(ctx, "company_id", create_id)
 }
 
+// UpdateCompany godoc
+// @Summary      Update company by ID
+// @Description  Updates a company with the given ID
+// @Tags         Companies
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id          path        int     true        "ID"
+// @Param        name        formData    string  false       "name"
+// @Param        description formData    string  false       "description"
+// @Param        IIN         formData    string  false       "IIN"
+// @Param        image       formData    file    false       "image"
+// @Success      200         {object}    map[string]any
+// @Failure      400         {object}    error
+// @Router       /api/companies/{id} [put]
 func (h *Handler) UpdateCompany(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
 	if err != nil {
@@ -190,6 +248,16 @@ func (h *Handler) UpdateCompany(ctx *gin.Context) {
 	})
 }
 
+// AddCompanyToRequest godoc
+// @Summary      Add company to request
+// @Description  Adds a company to a tender request
+// @Tags         Companies
+// @Accept       json
+// @Produce      json
+// @Param        threatId  path  int  true  "Threat ID"
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  error
+// @Router       /companies/request/{id} [post]
 func (h *Handler) AddCompanyToRequest(ctx *gin.Context) {
 	var request ds.AddToCompanyID
 

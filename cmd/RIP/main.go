@@ -19,7 +19,7 @@ import (
 // @version 1.0
 // @description App for serving tender requests
 
-// @host localhost:8080
+// @host 127.0.0.1:8080
 // @schemes http
 // @BasePath /
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	minioClient := Minio.NewMinioClient(logger)
 
 	router := gin.Default()
-	router.Use(corsMiddleware())
+	//router.Use(corsMiddleware())
 
 	conf, err := config.NewConfig(logger)
 	if err != nil {
@@ -60,18 +60,18 @@ func main() {
 	application.RunApp()
 }
 
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
-}
+//func corsMiddleware() gin.HandlerFunc {
+//	return func(c *gin.Context) {
+//		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+//		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+//		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+//		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+//
+//		if c.Request.Method == "OPTIONS" {
+//			c.AbortWithStatus(204)
+//			return
+//		}
+//
+//		c.Next()
+//	}
+//}
