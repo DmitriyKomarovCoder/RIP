@@ -262,8 +262,8 @@ func (h *Handler) AddCompanyToRequest(ctx *gin.Context) {
 	var request ds.AddToCompanyID
 
 	request.UserID = ctx.GetInt(userCtx)
-	idStr := ctx.Param("id")
-	request.CompanyID = uint(ctx.GetInt(idStr))
+	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
+	request.CompanyID = uint(id)
 
 	if request.CompanyID == 0 {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "услуга не может быть пустой"})

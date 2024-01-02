@@ -12,10 +12,12 @@ type Tender struct {
 	CreationDate   time.Time `json:"creation_date" gorm:"type:date; not null; default:current_date"`
 	FormationDate  time.Time `json:"formation_date" gorm:"type:date"`
 	CompletionDate time.Time `json:"completion_date" gorm:"type:date"`
-	ModeratorID    uint      `json:"moderator_id" gorm:"default:NULL"`
-	Moderator      User      `json:"moderator" gorm:"foreignkey:ModeratorID"`
-	UserID         uint      `json:"user_id"`
-	User           User      `json:"user" gorm:"foreignkey:UserID"`
+	CreatorLogin   string    `json:"creator_login"`
+	ModeratorLogin string    `json:"moderator_login"`
+	ModeratorID    uint      `json:"moderator_id"`
+	//Moderator      User      `json:"moderator" gorm:"foreignkey:ModeratorID"`
+	UserID uint `json:"user_id"`
+	//User   User `json:"user" gorm:"foreignkey:UserID"`
 }
 
 type NewStatus struct {

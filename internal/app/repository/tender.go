@@ -27,11 +27,15 @@ func (r *Repository) GetTenderDraftID(creatorID int) (uint, error) {
 }
 
 func (r *Repository) CreateTenderDraft(creatorID uint) (uint, error) {
+	userInfo, err := GetUserInfo(r, creatorID)
+	if err != nil {
+		return 0, err
+	}
 	request := ds.Tender{
-		// ModeratorID:  creatorID, // просто заглушка, потом придумаю, как сделать норм
 		UserID:       creatorID,
 		Status:       "черновик",
 		CreationDate: r.db.NowFunc(),
+		CreatorLogin: userInfo.Login,
 	}
 
 	if err := r.db.Create(&request).Error; err != nil {
@@ -81,10 +85,11 @@ func (r *Repository) GetTenderWithDataByID(requestID uint, userId uint, isAdmin 
 
 func (r *Repository) TenderList(status, start, end string, userId int, isAdmin bool) (*[]ds.Tender, error) {
 	var tender []ds.Tender
-	ending := "AND user_id = " + strconv.Itoa(userId)
+	ending := " AND user_id = " + strconv.Itoa(userId)
 	if isAdmin {
 		ending = ""
 	}
+
 	query := r.db.Where("status != ? AND status != ?"+ending, "удален", "черновик")
 
 	if status != "" {
@@ -164,6 +169,11 @@ func (r *Repository) FormTenderRequestByID(requestID uint, creatorID uint) error
 //}
 
 func (r *Repository) FinishRejectHelper(status string, requestID, moderatorID uint) error {
+	userInfo, err := GetUserInfo(r, moderatorID)
+	if err != nil {
+		return err
+	}
+
 	var req ds.Tender
 	res := r.db.
 		Where("id = ?", requestID).
@@ -178,6 +188,7 @@ func (r *Repository) FinishRejectHelper(status string, requestID, moderatorID ui
 	}
 
 	req.ModeratorID = moderatorID
+	req.ModeratorLogin = userInfo.Login
 	req.Status = status
 
 	req.CompletionDate = time.Now()

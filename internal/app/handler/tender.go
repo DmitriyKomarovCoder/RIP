@@ -139,7 +139,7 @@ func (h *Handler) FormTenderRequest(c *gin.Context) {
 // @Param        input    body    ds.NewStatus  true    "update status"
 // @Success      200  {object}  map[string]any
 // @Failure      400  {object}  error
-// @Router       /api/tenders/form/{id} [put]
+// @Router       /tenders/updateStatus/{id} [put]
 func (h *Handler) UpdateStatusTenderRequest(c *gin.Context) {
 	var status ds.NewStatus
 	if err := c.BindJSON(&status); err != nil {

@@ -72,7 +72,7 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 
 	// статусы
 	api.PUT("/tenders/form/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.FormTenderRequest)
-	api.PUT("/tenders/updateStatus", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateStatusTenderRequest)
+	api.PUT("/tenders/updateStatus/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateStatusTenderRequest)
 	//api.PUT("/tenders/finish/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.FinishTenderRequest)
 
 	api.DELETE("/tenders", h.WithAuthCheck([]ds.Role{ds.Client}), h.DeleteTender)
