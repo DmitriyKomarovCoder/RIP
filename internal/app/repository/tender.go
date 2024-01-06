@@ -265,3 +265,16 @@ func (r *Repository) UpdateTenderCompany(tenderID uint, companyID uint, cash flo
 
 	return nil
 }
+
+func (r *Repository) SaveRequest(monitoringRequest ds.RequestAsyncService) error {
+	var request ds.Tender
+	err := r.db.First(&request, "id = ?", monitoringRequest.RequestId)
+	if err.Error != nil {
+		r.logger.Error("error while getting monitoring request")
+		return err.Error
+	}
+	request.CompletionDate = time.Now()
+	request.Status = monitoringRequest.Status
+	res := r.db.Save(&request)
+	return res.Error
+}

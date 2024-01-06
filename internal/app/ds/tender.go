@@ -28,3 +28,9 @@ type TenderDetails struct {
 	Tender  *Tender    `json:"tender"`
 	Company *[]Company `json:"companies"`
 }
+
+type RequestAsyncService struct {
+	RequestId int    `json:"requestId"`
+	Token     string `json:"Server-Token"`
+	Status    string `json:"status"`
+}
