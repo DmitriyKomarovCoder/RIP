@@ -2,131 +2,231 @@ package handler
 
 import (
 	"RIP/internal/app/ds"
+	"RIP/internal/app/role"
+	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 )
 
-// SignUp godoc
-// @Summary      Sign up a new user
-// @Description  Creates a new user account
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Param        user  body  ds.UserSignUp  true  "User information"
-// @Success      201  {object}  map[string]any
-// @Failure      400  {object}  error
-// @Failure      409  {object}  error
-// @Failure      500  {object}  error
-// @Router       /api/user/signUp [post]
-func (h *Handler) SignUp(c *gin.Context) {
-	var newClient ds.UserSignUp
-	var err error
+// Register godoc
+// @Summary Регистрация пользователя
+// @Description Регистрация нового пользователя.
+// @Tags Пользователи
+// @Accept json
+// @Produce json
+// @Param request body ds.RegisterReq true "Детали регистрации"
+// @Router /api/v3/users/sign_up [post]
+func (h *Handler) Register(ctx *gin.Context) {
+	req := &ds.RegisterReq{}
 
-	if err = c.BindJSON(&newClient); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "неверный формат данных о новом пользователе"})
+	err := json.NewDecoder(ctx.Request.Body).Decode(req)
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
 
-	if newClient.Password, err = h.Hasher.Hash(newClient.Password); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "неверный формат пароля"})
+	if req.Password == "" {
+		h.errorHandler(ctx, http.StatusBadRequest, fmt.Errorf("pass is empty"))
 		return
 	}
 
-	if err = h.Repository.SignUp(c.Request.Context(), ds.User{
-		Login:    newClient.Login,
-		Name:     newClient.Name,
-		Password: newClient.Password,
+	if req.Login == "" {
+		h.errorHandler(ctx, http.StatusBadRequest, fmt.Errorf("name is empty"))
+		return
+	}
+
+	if err = h.Repository.Register(&ds.User{
+		Name:     req.Name,
+		Role:     role.Buyer,
+		Login:    req.Login,
+		Password: generateHashString(req.Password),
 	}); err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "нельзя создать пользователя с таким логином"})
-
+		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "пользователь успешно создан"})
+	ctx.JSON(http.StatusOK, &ds.RegisterResp{
+		Ok: true,
+	})
 }
 
-// SignIn godoc
-// @Summary      User sign-in
-// @Description  Authenticates a user and generates an access token
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Param        user  body  ds.UserLogin  true  "User information"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  error
-// @Failure      401  {object}  error
-// @Failure      500  {object}  error
-// @Router       /api/user/signIn [post]
-func (h *Handler) SignIn(c *gin.Context) {
-	var clientInfo ds.UserLogin
-	var err error
+// Login godoc
+// @Summary Аутентификация пользователя
+// @Description Вход нового пользователя.
+// @Tags Пользователи
+// @Accept json
+// @Produce json
+// @Param request body ds.RegisterReq true "Детали входа"
+// @Success 200 {object} ds.LoginSwaggerResp "Успешная аутентификация"
+// @Failure 400 {object} errorResp "Неверный запрос"
+// @Failure 401 {object} errorResp "Неверные учетные данные"
+// @Failure 500 {object} errorResp "Внутренняя ошибка сервера"
+// @Router /api/v3/users/login [post]
+func (h *Handler) Login(ctx *gin.Context) {
+	cfg := h.Config
+	req := &ds.LoginReq{}
 
-	if err = c.BindJSON(&clientInfo); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, "неверный формат данных")
+	if err := json.NewDecoder(ctx.Request.Body).Decode(req); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
-
-	if clientInfo.Password, err = h.Hasher.Hash(clientInfo.Password); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "неверный формат пароля"})
-		return
-	}
-
-	user, err := h.Repository.GetByCredentials(c.Request.Context(), ds.User{Password: clientInfo.Password, Login: clientInfo.Login})
+	user, err := h.Repository.GetUserByLogin(req.Login)
 	if err != nil {
-		if errors.Is(err, ds.ErrUserNotFound) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		h.errorHandler(ctx, http.StatusInternalServerError, err)
+		return
+	}
+
+	if req.Login == user.Login && user.Password == generateHashString(req.Password) {
+		token := jwt.NewWithClaims(cfg.JWT.SigningMethod, &ds.JWTClaims{
+			StandardClaims: jwt.StandardClaims{
+				ExpiresAt: time.Now().Add(cfg.JWT.ExpiresIn).Unix(),
+				IssuedAt:  time.Now().Unix(),
+				Issuer:    "bitop-admin",
+			},
+			UserID: uint(user.UserId),
+			Role:   user.Role,
+		})
+
+		if token == nil {
+			h.errorHandler(ctx, http.StatusInternalServerError, errors.New("token is nil"))
 			return
 		}
-		fmt.Println(err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "ошибка авторизации"})
+
+		strToken, err := token.SignedString([]byte(cfg.JWT.Token))
+		if err != nil {
+			h.errorHandler(ctx, http.StatusInternalServerError, errors.New("cannot create str token"))
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"expires_in":   cfg.JWT.ExpiresIn,
+			"access_token": strToken,
+			"token_type":   "Bearer",
+			"role":         user.Role,
+			"name":         user.Name,
+		})
 		return
 	}
 
-	token, err := h.TokenManager.NewJWT(int(user.UserId), user.IsAdmin)
+	h.errorHandler(ctx, http.StatusBadRequest, errors.New("incorrect login or password"))
+}
+
+func (h *Handler) UsersList(ctx *gin.Context) {
+	users, err := h.Repository.UsersList()
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "ошибка при формировании токена"})
+		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
 	}
 
-	c.SetCookie("AccessToken", "Bearer "+token, 0, "/", "127.0.0.1:8080", false, true)
-	c.JSON(http.StatusOK, gin.H{"message": "клиент успешно авторизован"})
+	h.successHandler(ctx, "users", users)
 }
 
 // Logout godoc
-// @Summary      Logout
-// @Description  Logs out the user by blacklisting the access token
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Success      200
-// @Failure      400
-// @Router       /api/user/logout [post]
-func (h *Handler) Logout(c *gin.Context) {
-	jwtStr, err := c.Cookie("AccessToken")
-	if !strings.HasPrefix(jwtStr, jwtPrefix) || err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+// @Summary Выход пользователя
+// @Description Завершение сеанса текущего пользователя.
+// @Tags Пользователи
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {string} string "Успешный выход"
+// @Failure 400 {object} errorResp "Неверный запрос"
+// @Failure 401 {object} errorResp "Неверные учетные данные"
+// @Failure 500 {object} errorResp "Внутренняя ошибка сервера"
+// @Router /api/v3/users/logout [get]
+func (h *Handler) Logout(ctx *gin.Context) {
+	jwtStr := ctx.GetHeader("Authorization")
+	if !strings.HasPrefix(jwtStr, jwtPrefix) {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	jwtStr = jwtStr[len(jwtPrefix):]
+
+	_, err := jwt.ParseWithClaims(jwtStr, &ds.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(h.Config.JWT.Token), nil
+	})
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
 
-	jwtStr = jwtStr[len(jwtPrefix):]
-
-	_, _, err = h.TokenManager.Parse(jwtStr)
+	err = h.Redis.WriteJWTToBlacklist(ctx.Request.Context(), jwtStr, h.Config.JWT.ExpiresIn)
 	if err != nil {
+		h.errorHandler(ctx, http.StatusInternalServerError, err)
+		return
+	}
+
+	ctx.Status(http.StatusOK)
+}
+
+// MARK: - Inner functions
+
+func generateHashString(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+const (
+	ServerToken = "qwerty"
+	ServiceUrl  = "http://127.0.0.1:8000/addRequest/"
+)
+
+func (h *Handler) UserRequest(c *gin.Context) {
+	var request ds.RequestAsyncService
+	if err := c.BindJSON(&request); err != nil {
+		c.AbortWithError(http.StatusBadRequest, errors.New("неверный формат"))
+		return
+	}
+
+	request.Token = ServerToken
+
+	body, _ := json.Marshal(request)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("PUT", ServiceUrl, bytes.NewBuffer(body))
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+
+	if resp.StatusCode == 200 {
+		c.JSON(http.StatusOK, gin.H{"message": "заявка принята в обработку"})
+		return
+	}
+	c.AbortWithError(http.StatusInternalServerError, errors.New("заявка не принята в обработку"))
+}
+
+// ручка вызывается сервисом на python
+func (h *Handler) FinishUserRequest(c *gin.Context) {
+	var request ds.RequestAsyncService
+	if err := c.BindJSON(&request); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		log.Println(err)
 		return
 	}
 
-	err = h.Redis.WriteJWTToBlacklist(c.Request.Context(), jwtStr, time.Hour)
+	// сохраняем в базу
+	err := h.Repository.SaveRequest(request)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		log.Println(err)
 		return
 	}
-
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, gin.H{"message": "данные сохранены"})
 }

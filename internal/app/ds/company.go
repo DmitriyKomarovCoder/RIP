@@ -15,6 +15,6 @@ type CompanyList struct {
 	Companies *[]Company `json:"companies_list"`
 }
 type AddToCompanyID struct {
-	CompanyID uint `json:"company"`
-	UserID    int  `json:"user_id"`
+	CompanyID uint    `json:"company_id"`
+	Cash      float64 `json:"cash"`
 }

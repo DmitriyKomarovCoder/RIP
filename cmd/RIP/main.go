@@ -5,14 +5,12 @@ import (
 	"RIP/internal/app/dsn"
 	"RIP/internal/app/handler"
 	app "RIP/internal/app/pkg"
-	"RIP/internal/app/pkg/auth"
 	"RIP/internal/app/redis"
 	"RIP/internal/app/repository"
 	Minio "RIP/internal/app/s3/minio"
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"os"
 )
 
 // @title Tender App
@@ -50,12 +48,12 @@ func main() {
 		logger.Fatalf("Error from repository: %s", err)
 	}
 
-	tokenManager, err := auth.NewManager(os.Getenv("TOKEN_SECRET"))
-	if err != nil {
-		logger.Fatalln(err)
-	}
+	//tokenManager, err := auth.NewManager(os.Getenv("TOKEN_SECRET"))
+	//if err != nil {
+	//	logger.Fatalln(err)
+	//}
 
-	hand := handler.NewHandler(logger, rep, minioClient, conf, redisClient, tokenManager)
+	hand := handler.NewHandler(logger, rep, minioClient, conf, redisClient)
 	application := app.NewApp(conf, router, logger, hand)
 	application.RunApp()
 }

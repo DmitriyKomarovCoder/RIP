@@ -25,8 +25,8 @@ func New(ctx context.Context, cfg config.RedisConfig) (*Client, error) {
 		Username:    cfg.User,
 		Addr:        cfg.Host + ":" + strconv.Itoa(cfg.Port),
 		DB:          0,
-		DialTimeout: 10000000000,
-		ReadTimeout: 10000000000,
+		DialTimeout: cfg.DialTimeout,
+		ReadTimeout: cfg.ReadTimeout,
 	})
 
 	client.client = redisClient

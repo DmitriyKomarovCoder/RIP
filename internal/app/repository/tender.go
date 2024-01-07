@@ -4,14 +4,19 @@ import (
 	"RIP/internal/app/ds"
 	"RIP/internal/app/utils"
 	"errors"
-	"fmt"
-	"strconv"
 	"time"
 
 	"gorm.io/gorm"
 )
 
-func (r *Repository) GetTenderDraftID(creatorID int) (uint, error) {
+func (r *Repository) TenderByID(id uint) (*ds.Tender, error) {
+	tender := ds.Tender{}
+	result := r.db.Preload("User").
+		First(&tender, id)
+	return &tender, result.Error
+}
+
+func (r *Repository) GetTenderDraftID(creatorID uint) (uint, error) {
 	var draftReq ds.Tender
 
 	res := r.db.Where("user_id = ?", creatorID).Where("status = ?", utils.Draft).Take(&draftReq)
@@ -27,15 +32,16 @@ func (r *Repository) GetTenderDraftID(creatorID int) (uint, error) {
 }
 
 func (r *Repository) CreateTenderDraft(creatorID uint) (uint, error) {
-	userInfo, err := GetUserInfo(r, creatorID)
-	if err != nil {
-		return 0, err
-	}
+	//userInfo, err := GetUserInfo(r, creatorID)
+	//if err != nil {
+	//	return 0, err
+	//}
 	request := ds.Tender{
 		UserID:       creatorID,
 		Status:       "черновик",
 		CreationDate: r.db.NowFunc(),
-		CreatorLogin: userInfo.Login,
+		ModeratorID:  nil,
+		//CreatorLogin: userInfo.Login,
 	}
 
 	if err := r.db.Create(&request).Error; err != nil {
@@ -83,14 +89,14 @@ func (r *Repository) GetTenderWithDataByID(requestID uint, userId uint, isAdmin 
 //	return monitoringRequests, nil
 //}
 
-func (r *Repository) TenderList(status, start, end string, userId int, isAdmin bool) (*[]ds.Tender, error) {
+func (r *Repository) TenderList(status, start, end string, userId string, isAdmin bool) (*[]ds.Tender, error) {
 	var tender []ds.Tender
-	ending := " AND user_id = " + strconv.Itoa(userId)
+	ending := " AND user_id = " + userId
 	if isAdmin {
 		ending = ""
 	}
 
-	query := r.db.Where("status != ? AND status != ?"+ending, "удален", "черновик")
+	query := r.db.Where("status != ?"+ending, "удален")
 
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -104,7 +110,12 @@ func (r *Repository) TenderList(status, start, end string, userId int, isAdmin b
 		query = query.Where("creation_date <= ?", end)
 	}
 	query = query.Order("id ASC")
-	result := query.Find(&tender)
+	result := query.
+		Preload("User").
+		Preload("TenderCompanies.Company").
+		Preload("TenderCompanies.Tenders").
+		Preload("Moderator").
+		Find(&tender)
 	return &tender, result.Error
 
 }
@@ -135,29 +146,29 @@ func (r *Repository) UpdateTender(updatedTender *ds.Tender) error {
 	return result.Error
 }
 
-func (r *Repository) FormTenderRequestByID(requestID uint, creatorID uint) error {
+func (r *Repository) FormTenderRequestByID(creatorID uint) (error, uint) {
 	var req ds.Tender
 	res := r.db.
-		Where("id = ?", requestID).
+		//Where("id = ?", requestID).
 		Where("user_id = ?", creatorID).
 		Where("status = ?", utils.Draft).
 		Take(&req)
 
 	if res.Error != nil {
-		return res.Error
+		return res.Error, 0
 	}
 	if res.RowsAffected == 0 {
-		return errors.New("нет такой заявки")
+		return errors.New("нет такой заявки"), 0
 	}
 
 	req.Status = "сформирован"
 	req.FormationDate = time.Now()
 
 	if err := r.db.Save(&req).Error; err != nil {
-		return err
+		return err, 0
 	}
 
-	return nil
+	return nil, req.ID
 }
 
 //func (r *Repository) RejectTenderRequestByID(requestID, moderatorID uint) error {
@@ -169,10 +180,10 @@ func (r *Repository) FormTenderRequestByID(requestID uint, creatorID uint) error
 //}
 
 func (r *Repository) FinishRejectHelper(status string, requestID, moderatorID uint) error {
-	userInfo, err := GetUserInfo(r, moderatorID)
-	if err != nil {
-		return err
-	}
+	//userInfo, err := GetUserInfo(r, moderatorID)
+	//if err != nil {
+	//	return err
+	//}
 
 	var req ds.Tender
 	res := r.db.
@@ -187,8 +198,8 @@ func (r *Repository) FinishRejectHelper(status string, requestID, moderatorID ui
 		return errors.New("нет такой заявки")
 	}
 
-	req.ModeratorID = moderatorID
-	req.ModeratorLogin = userInfo.Login
+	req.ModeratorID = &moderatorID
+	//req.ModeratorLogin = userInfo.Login
 	req.Status = status
 
 	req.CompletionDate = time.Now()
@@ -200,59 +211,83 @@ func (r *Repository) FinishRejectHelper(status string, requestID, moderatorID ui
 	return nil
 }
 
+//func (r *Repository) DeleteTenderByID(requestID uint) error { // ?
+//	var req ds.Tender
+//	res := r.db.
+//		Where("user_id = ?", requestID). // ??
+//		Take(&req)
+//
+//	if res.Error != nil {
+//		return res.Error
+//	}
+//	if res.RowsAffected == 0 {
+//		return errors.New("нет такой заявки")
+//	}
+//
+//	req.Status = "удалён"
+//	delTime := time.Now()
+//	req.CompletionDate = time.Now()
+//	if err := r.db.Save(&req).Error; err != nil {
+//		return err
+//	}
+//	if err := r.db.Model(&req).Update("deleted_at", delTime).Error; err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
+
 func (r *Repository) DeleteTenderByID(requestID uint) error { // ?
 	var req ds.Tender
-	res := r.db.
-		Where("user_id = ?", requestID). // ??
-		Take(&req)
-
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return errors.New("нет такой заявки")
+	if result := r.db.First(&req, requestID); result.Error != nil {
+		return result.Error
 	}
 
-	req.Status = "удалён"
-	delTime := time.Now()
+	req.Status = "удален"
 	req.CompletionDate = time.Now()
 	if err := r.db.Save(&req).Error; err != nil {
 		return err
 	}
-	if err := r.db.Model(&req).Update("deleted_at", delTime).Error; err != nil {
-		return err
-	}
+	result := r.db.Save(&req)
 
-	return nil
+	return result.Error
 }
 
-func (r *Repository) DeleteCompanyFromRequest(userId uint, companyID uint) (ds.Tender, []ds.Company, error) {
-	var request ds.Tender
-	r.db.Where("user_id = ?", userId).First(&request)
+//func (r *Repository) DeleteCompanyFromRequest(userId uint, companyID uint) (ds.Tender, []ds.Company, error) {
+//	var request ds.Tender
+//	r.db.Where("user_id = ?", userId).First(&request)
+//
+//	if request.ID == 0 {
+//		return ds.Tender{}, nil, errors.New("no such request")
+//	}
+//	var company ds.Company
+//	result := r.db.Where("\"CompanyID\" = ? and \"TenderID\" = ?", companyID,
+//		request.ID).Find(&company)
+//	if result.Error != nil {
+//		return ds.Tender{}, nil, result.Error
+//	}
+//
+//	if result.RowsAffected == 0 {
+//		return ds.Tender{}, nil, fmt.Errorf("record not found")
+//	}
+//	if err := r.db.Delete(&request).Error; err != nil {
+//		return ds.Tender{}, nil, err
+//	}
+//
+//	return r.GetTenderWithDataByID(request.ID, userId, false)
+//}
 
-	if request.ID == 0 {
-		return ds.Tender{}, nil, errors.New("no such request")
+func (r *Repository) DeleteCompanyFromRequest(id int) error {
+	var dh ds.TenderCompany
+	if result := r.db.First(&dh, id); result.Error != nil {
+		return result.Error
 	}
-	var company ds.Company
-	result := r.db.Where("\"CompanyID\" = ? and \"TenderID\" = ?", companyID,
-		request.ID).Find(&company)
-	if result.Error != nil {
-		return ds.Tender{}, nil, result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return ds.Tender{}, nil, fmt.Errorf("record not found")
-	}
-	if err := r.db.Delete(&request).Error; err != nil {
-		return ds.Tender{}, nil, err
-	}
-
-	return r.GetTenderWithDataByID(request.ID, userId, false)
+	return r.db.Delete(&dh).Error
 }
 
-func (r *Repository) UpdateTenderCompany(tenderID uint, companyID uint, cash float64) error {
+func (r *Repository) UpdateTenderCompany(id uint, cash float64) error {
 	var updateCompany ds.TenderCompany
-	r.db.Where(" \"TenderID\" = ? and \"CompanyID\" = ?", tenderID, companyID).First(&updateCompany)
+	r.db.Where("id = ?", id).First(&updateCompany)
 
 	if updateCompany.TenderID == 0 {
 		return errors.New("нет такой заявки")
@@ -264,4 +299,17 @@ func (r *Repository) UpdateTenderCompany(tenderID uint, companyID uint, cash flo
 	}
 
 	return nil
+}
+
+func (r *Repository) SaveRequest(monitoringRequest ds.RequestAsyncService) error {
+	var request ds.Tender
+	err := r.db.First(&request, "id = ?", monitoringRequest.RequestId)
+	if err.Error != nil {
+		r.logger.Error("error while getting monitoring request")
+		return err.Error
+	}
+	request.CompletionDate = time.Now()
+	request.Status = monitoringRequest.Status
+	res := r.db.Save(&request)
+	return res.Error
 }

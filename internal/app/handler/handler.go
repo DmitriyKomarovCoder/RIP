@@ -3,11 +3,11 @@ package handler
 import (
 	_ "RIP/docs"
 	"RIP/internal/app/config"
-	"RIP/internal/app/ds"
-	"RIP/internal/app/pkg/auth"
 	"RIP/internal/app/pkg/hash"
 	"RIP/internal/app/redis"
 	"RIP/internal/app/repository"
+	"RIP/internal/app/role"
+	"github.com/gin-contrib/cors"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"net/http"
@@ -24,13 +24,13 @@ const (
 )
 
 type Handler struct {
-	Logger       *logrus.Logger
-	Repository   *repository.Repository
-	Minio        *minio.Client
-	Config       *config.Config
-	Redis        *redis.Client
-	TokenManager auth.TokenManager
-	Hasher       hash.PasswordHasher
+	Logger     *logrus.Logger
+	Repository *repository.Repository
+	Minio      *minio.Client
+	Config     *config.Config
+	Redis      *redis.Client
+	//TokenManager auth.TokenManager
+	Hasher hash.PasswordHasher
 }
 
 func NewHandler(
@@ -39,16 +39,16 @@ func NewHandler(
 	m *minio.Client,
 	conf *config.Config,
 	red *redis.Client,
-	tokenManager auth.TokenManager,
+	// tokenManager auth.TokenManager,
 ) *Handler {
 	return &Handler{
-		Logger:       l,
-		Repository:   r,
-		Minio:        m,
-		Config:       conf,
-		Redis:        red,
-		TokenManager: tokenManager,
-		Hasher:       hash.NewSHA256Hasher(os.Getenv("SALT")),
+		Logger:     l,
+		Repository: r,
+		Minio:      m,
+		Config:     conf,
+		Redis:      red,
+		//TokenManager: tokenManager,
+		Hasher: hash.NewSHA256Hasher(os.Getenv("SALT")),
 	}
 }
 
@@ -57,35 +57,41 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 
 	api := router.Group("/api")
 	// услуги
-	api.GET("/companies", h.CompaniesList)
-	api.GET("/companies/:id", h.GetCompanyById)
-	api.POST("/companies", h.WithAuthCheck([]ds.Role{ds.Admin}), h.AddCompany)
-	api.PUT("/companies/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateCompany)
-	api.DELETE("/companies/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.DeleteCompany)
-	api.POST("/companies/request/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.AddCompanyToRequest)
+	api.GET("/companies", h.CompaniesList)      // ?
+	api.GET("/companies/:id", h.GetCompanyById) // ?
+	api.POST("/companies", h.AddCompany)
+	api.PUT("/companies/:id", h.WithAuthCheck(role.Moderator, role.Admin), h.UpdateCompany)
+	api.DELETE("/companies/:id", h.WithAuthCheck(role.Moderator, role.Admin), h.DeleteCompany)
+	api.POST("/companies/request", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.AddCompanyToRequest)
+	api.Use(cors.Default()).DELETE("/companies/delete/:id", h.DeleteCompany)
 
 	// заявки
-	api.GET("/tenders", h.WithAuthCheck([]ds.Role{ds.Admin, ds.Client}), h.TenderList)
-	api.GET("/tenders/:id", h.WithAuthCheck([]ds.Role{ds.Client, ds.Admin}), h.GetTenderById)
+	api.GET("/tenders", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.TenderList)
+	api.GET("/tenders/:id", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.GetTenderById)
 	// api.POST("/tenders/", h.CreateDraft)
-	api.PUT("/tenders", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateTender)
+	api.PUT("/tenders", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.UpdateTender)
 
 	// статусы
-	api.PUT("/tenders/form/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.FormTenderRequest)
-	api.PUT("/tenders/updateStatus/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.UpdateStatusTenderRequest)
+	api.PUT("/tenders/form", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.FormTenderRequest)
+	api.PUT("/tenders/updateStatus", h.WithAuthCheck(role.Moderator, role.Admin), h.UpdateStatusTenderRequest)
 	//api.PUT("/tenders/finish/:id", h.WithAuthCheck([]ds.Role{ds.Admin}), h.FinishTenderRequest)
 
-	api.DELETE("/tenders", h.WithAuthCheck([]ds.Role{ds.Client}), h.DeleteTender)
+	api.DELETE("/tenders", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.DeleteTender)
 
 	// m-m
-	api.DELETE("/tender-request-company/:id", h.WithAuthCheck([]ds.Role{ds.Client}), h.DeleteCompanyFromRequest)
-	api.PUT("/tender-request-company", h.UpdateTenderCompany)
+	api.DELETE("/tender-request-company", h.WithoutJWTError(role.Buyer, role.Moderator, role.Admin), h.DeleteCompanyFromRequest)
+	api.PUT("/tender-request-company", h.WithoutJWTError(role.Buyer, role.Moderator, role.Admin), h.UpdateTenderCompany)
 	registerStatic(router)
 
 	// auth && reg
-	api.POST("/user/signIn", h.SignIn)
-	api.POST("/user/signUp", h.SignUp)
+	api.POST("/user/signIn", h.Login)
+	api.POST("/user/signUp", h.Register)
 	api.POST("/user/logout", h.Logout)
+
+	// асинхронный сервис
+	api.PUT("/tenders/user-form-start", h.WithoutJWTError(role.Buyer), h.UserRequest) // обращение к асинхронному сервису
+	api.PUT("/tenders/user-form-finish", h.FinishUserRequest)                         // обращение к асинхронному сервису
+
 }
 
 func registerStatic(router *gin.Engine) {

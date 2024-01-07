@@ -28,18 +28,32 @@ func (h *Handler) CompaniesList(ctx *gin.Context) {
 		h.errorHandler(ctx, http.StatusNoContent, err)
 		return
 	}
-	draftID, err := h.Repository.GetTenderDraftID(ctx.GetInt(userCtx)) // creatorID(UserID)
+	userID, existsUser := ctx.Get("user_id")
+	var draftIdRes uint = 0
+	if existsUser {
+		basketId, errBask := h.Repository.GetTenderDraftID(userID.(uint))
+		if errBask != nil {
+			h.errorHandler(ctx, http.StatusInternalServerError, errBask)
+			return
+		}
+		draftIdRes = basketId
+	}
+	//draftID, err := h.Repository.GetTenderDraftID(ctx.GetInt(userCtx)) // creatorID(UserID)
 	if err != nil {
 		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
 	}
 
-	companiesList := ds.CompanyList{
-		DraftID:   draftID,
-		Companies: companies,
-	}
+	//companiesList := ds.CompanyList{
+	//	DraftID:   draftIdRes,
+	//	Companies: companies,
+	//}
 
-	h.successHandler(ctx, "companies", companiesList)
+	ctx.JSON(http.StatusOK, gin.H{
+		"status":    "success",
+		"companies": companies,
+		"draft_id":  draftIdRes,
+	})
 }
 
 // GetCompanyById godoc
@@ -112,7 +126,7 @@ func (h *Handler) DeleteCompany(ctx *gin.Context) {
 		h.errorHandler(ctx, http.StatusInternalServerError, err)
 	}
 
-	ctx.JSON(http.StatusOK, "company deleted successfully")
+	h.successHandler(ctx, "deleted_id", id)
 }
 
 // AddCompany godoc
@@ -137,22 +151,22 @@ func (h *Handler) AddCompany(ctx *gin.Context) {
 	}
 
 	newCompany.CompanyName = ctx.Request.FormValue("name")
-	if newCompany.CompanyName == "" {
-		h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя компании не может быть пустой"))
-		return
-	}
+	//if newCompany.CompanyName == "" {
+	//	h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя компании не может быть пустой"))
+	//	return
+	//}
 
 	newCompany.IIN = ctx.Request.FormValue("IIN")
-	if newCompany.IIN == "" {
-		h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя ИИН не может быть пустой"))
-		return
-	}
+	//if newCompany.IIN == "" {
+	//	h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя ИИН не может быть пустой"))
+	//	return
+	//}
 
 	newCompany.Description = ctx.Request.FormValue("description")
-	if newCompany.Description == "" {
-		h.errorHandler(ctx, http.StatusBadRequest, errors.New("описание не может быть пустой"))
-		return
-	}
+	//if newCompany.Description == "" {
+	//	h.errorHandler(ctx, http.StatusBadRequest, errors.New("описание не может быть пустой"))
+	//	return
+	//}
 
 	file, header, err := ctx.Request.FormFile("image")
 	if err != http.ErrMissingFile && err != nil {
@@ -257,29 +271,43 @@ func (h *Handler) UpdateCompany(ctx *gin.Context) {
 // @Param        threatId  path  int  true  "Threat ID"
 // @Success      200  {object}  map[string]any
 // @Failure      400  {object}  error
-// @Router       /companies/request/{id} [post]
+// @Router       /companies/request [post]
 func (h *Handler) AddCompanyToRequest(ctx *gin.Context) {
-	var request ds.AddToCompanyID
+	userID, exists := ctx.Get("user_id")
+	if !exists {
+		h.errorHandler(ctx, http.StatusUnauthorized, errors.New("user_id not found"))
+		return
+	}
 
-	request.UserID = ctx.GetInt(userCtx)
-	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
-	request.CompanyID = uint(id)
+	userIDUint, ok := userID.(uint)
+	if !ok {
+		h.errorHandler(ctx, http.StatusUnauthorized, errors.New("`user_id` must be uint number"))
+		return
+	}
+
+	var request ds.AddToCompanyID
+	if err := ctx.BindJSON(&request); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	//request.UserID = userIDUint
+	//id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
+	//request.CompanyID = uint(id)
 
 	if request.CompanyID == 0 {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "услуга не может быть пустой"})
 		return
 	}
 
-	draftID, err := h.Repository.AddCompanyToDraft(request.CompanyID, uint(request.UserID))
+	draftID, err := h.Repository.AddCompanyToDraft(request.CompanyID, userIDUint, request.Cash)
 
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"draftID": draftID,
-	})
+	h.successHandler(ctx, "id", draftID)
 }
 
 // func (h *Handler) postCompanyStatus(ctx *gin.Context) {

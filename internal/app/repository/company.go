@@ -94,7 +94,7 @@ func (r *Repository) DeleteCompanyImage(companyId uint) string {
 	return company.ImageURL
 }
 
-func (r *Repository) AddCompanyToDraft(dataID uint, creatorID uint) (uint, error) {
+func (r *Repository) AddCompanyToDraft(dataID uint, creatorID uint, cash float64) (uint, error) {
 	// получаем услугу
 	data, err := r.GetCompanyById(dataID)
 	if err != nil {
@@ -126,7 +126,7 @@ func (r *Repository) AddCompanyToDraft(dataID uint, creatorID uint) (uint, error
 	requestToData := ds.TenderCompany{
 		CompanyID: dataID,
 		TenderID:  draftReq.ID,
-		Cash:      0.0,
+		Cash:      cash,
 	}
 
 	err = r.db.Create(&requestToData).Error

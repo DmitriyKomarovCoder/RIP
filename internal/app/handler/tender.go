@@ -2,7 +2,9 @@ package handler
 
 import (
 	"RIP/internal/app/ds"
+	"RIP/internal/app/role"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -22,19 +24,35 @@ import (
 // @Failure      500  {object}  error
 // @Router       /api/tenders [get]
 func (h *Handler) TenderList(ctx *gin.Context) {
+	userID, existsUser := ctx.Get("user_id")
+	userRole, existsRole := ctx.Get("user_role")
+	if !existsUser || !existsRole {
+		h.errorHandler(ctx, http.StatusUnauthorized, errors.New("not fount `user_id` or `user_role`"))
+		return
+	}
+
 	queryStatus, _ := ctx.GetQuery("status")
 
 	queryStart, _ := ctx.GetQuery("start")
 
 	queryEnd, _ := ctx.GetQuery("end")
+	isAdmin := false
+	switch userRole {
+	case role.Moderator:
+		isAdmin = true
+	case role.Admin:
+		isAdmin = true
+	default:
+		break
+	}
 
-	tenders, err := h.Repository.TenderList(queryStatus, queryStart, queryEnd, ctx.GetInt(userCtx), ctx.GetBool(adminCtx))
+	tenders, err := h.Repository.TenderList(queryStatus, queryStart, queryEnd, fmt.Sprintf("%d", userID), isAdmin)
 
 	if err != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"tenders": tenders})
+	h.successHandler(ctx, "tenders", tenders)
 }
 
 // GetTenderById godoc
@@ -50,14 +68,15 @@ func (h *Handler) TenderList(ctx *gin.Context) {
 func (h *Handler) GetTenderById(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
-	req, com, err := h.Repository.GetTenderWithDataByID(uint(id), uint(c.GetInt(userCtx)), c.GetBool(adminCtx))
+	//req, com, err := h.Repository.GetTenderWithDataByID(uint(id), uint(c.GetInt(userCtx)), c.GetBool(adminCtx))
+	tender, err := h.Repository.TenderByID(uint(id))
 	if err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
 	}
 
-	tenderD := ds.TenderDetails{Tender: &req, Company: &com}
-	c.JSON(http.StatusOK, tenderD)
+	//tenderD := ds.TenderDetails{Tender: &req, Company: &com}
+	h.successHandler(c, "tender", tender)
 }
 
 // UpdateTender godoc
@@ -72,21 +91,54 @@ func (h *Handler) GetTenderById(c *gin.Context) {
 // @Failure      500          {object}  error
 // @Router       /api/tenders [put]
 func (h *Handler) UpdateTender(ctx *gin.Context) {
-	var updatedTender ds.Tender
+	userID, existsUser := ctx.Get("user_id")
+	userRole, existsRole := ctx.Get("user_role")
+	if !existsUser || !existsRole {
+		h.errorHandler(ctx, http.StatusUnauthorized, errors.New("not fount `user_id` or `user_role`"))
+		return
+	}
+
+	var updatedTender ds.UpdateTender
 	if err := ctx.BindJSON(&updatedTender); err != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
+
 	if updatedTender.ID == 0 {
 		h.errorHandler(ctx, http.StatusBadRequest, errors.New("id некоректен"))
 		return
 	}
-	if err := h.Repository.UpdateTender(&updatedTender); err != nil {
+
+	var updatedT ds.Tender
+	updatedT.ID = updatedTender.ID
+	updatedT.Name = updatedTender.Name
+
+	tender, err := h.Repository.TenderByID(updatedT.ID)
+
+	if err != nil {
+		h.errorHandler(ctx, http.StatusInternalServerError, fmt.Errorf("hike with `id` = %d not found", tender.ID))
+		return
+	}
+
+	if tender.UserID != userID && userRole == role.Buyer {
+		h.errorHandler(ctx, http.StatusForbidden, errors.New("you cannot change the hike if it's not yours"))
+		return
+	}
+
+	if err := h.Repository.UpdateTender(&updatedT); err != nil {
 		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, "")
+	h.successHandler(ctx, "updated_tender", gin.H{
+		"id":              updatedTender.ID,
+		"tender_name":     updatedTender.Name,
+		"creation_date":   tender.CreationDate,
+		"completion_date": tender.CompletionDate,
+		"formation_date":  tender.FormationDate,
+		"user_id":         tender.UserID,
+		"status":          tender.Status,
+	})
 }
 
 //func (h *Handler) CreateDraft(c *gin.Context) {
@@ -109,24 +161,29 @@ func (h *Handler) UpdateTender(ctx *gin.Context) {
 // @Success      200          {object}  ds.TenderDetails
 // @Failure      400          {object}  error
 // @Failure      500          {object}  error
-// @Router       /api/tenders/form/{id} [put]
+// @Router       /api/tenders/form [put]
 func (h *Handler) FormTenderRequest(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	//id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	userID, existsUser := c.Get("user_id")
+	if !existsUser {
+		h.errorHandler(c, http.StatusUnauthorized, errors.New("not fount `user_id` or `user_role`"))
+		return
+	}
 
-	err := h.Repository.FormTenderRequestByID(uint(id), uint(c.GetInt(userCtx)))
+	err, _ := h.Repository.FormTenderRequestByID(userID.(uint))
 	if err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
 	}
 
-	req, com, err := h.Repository.GetTenderWithDataByID(uint(id), uint(c.GetInt(userCtx)), false)
+	//_, _, err = h.Repository.GetTenderWithDataByID(idTender, userID.(uint), false)
 	if err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
 	}
 
-	tenderDetails := ds.TenderDetails{Tender: &req, Company: &com}
-	c.JSON(http.StatusOK, tenderDetails)
+	//tenderDetails := ds.TenderDetails{Tender: &req, Company: &com}
+	c.Status(http.StatusOK)
 }
 
 // UpdateStatusTenderRequest godoc
@@ -139,7 +196,7 @@ func (h *Handler) FormTenderRequest(c *gin.Context) {
 // @Param        input    body    ds.NewStatus  true    "update status"
 // @Success      200  {object}  map[string]any
 // @Failure      400  {object}  error
-// @Router       /tenders/updateStatus/{id} [put]
+// @Router       /tenders/updateStatus [put]
 func (h *Handler) UpdateStatusTenderRequest(c *gin.Context) {
 	var status ds.NewStatus
 	if err := c.BindJSON(&status); err != nil {
@@ -147,18 +204,25 @@ func (h *Handler) UpdateStatusTenderRequest(c *gin.Context) {
 		return
 	}
 
+	userIDStr, existsUser := c.Get("user_id")
+	if !existsUser {
+		h.errorHandler(c, http.StatusUnauthorized, errors.New("not fount `user_id` or `user_role`"))
+		return
+	}
+	userID := userIDStr.(uint)
+
 	if status.Status != "отклонен" && status.Status != "завершен" {
 		h.errorHandler(c, http.StatusBadRequest, errors.New("статус можно поменять только на 'отклонен' и 'завершен'"))
 	}
 
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	//id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
-	if err := h.Repository.FinishRejectHelper(status.Status, uint(id), uint(c.GetInt(userCtx))); err != nil {
+	if err := h.Repository.FinishRejectHelper(status.Status, status.TenderID, userID); err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, status.Status+"а")
+	c.Status(http.StatusOK)
 }
 
 //func (h *Handler) FinishTenderRequest(c *gin.Context) {
@@ -181,18 +245,28 @@ func (h *Handler) UpdateStatusTenderRequest(c *gin.Context) {
 // @Param        id  path  int  true  "company ID"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      400  {object}  error
-// @Router       /api/tender-request-company/{id} [delete]
+// @Router       /api/tender-request-company [delete]
 func (h *Handler) DeleteCompanyFromRequest(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	var body struct {
+		ID int `json:"id"`
+	}
 
-	userId := c.GetInt(userCtx)
+	if err := c.BindJSON(&body); err != nil {
+		h.errorHandler(c, http.StatusBadRequest, err)
+		return
+	}
 
-	request, companies, err := h.Repository.DeleteCompanyFromRequest(uint(userId), uint(id))
+	if body.ID == 0 {
+		h.errorHandler(c, http.StatusBadRequest, errors.New("param `id` not found"))
+		return
+	}
+
+	err := h.Repository.DeleteCompanyFromRequest(body.ID)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Компания удалена из заявки", "companies": companies, "monitoring-request": request})
+	h.successHandler(c, "deleted_company_tender", body.ID)
 }
 
 // DeleteTender godoc
@@ -206,18 +280,48 @@ func (h *Handler) DeleteCompanyFromRequest(c *gin.Context) {
 // @Failure      400  {object}  error
 // @Router       /api/tenders [delete]
 func (h *Handler) DeleteTender(c *gin.Context) {
+	userID, existsUser := c.Get("user_id")
+	userRole, existsRole := c.Get("user_role")
+	if !existsUser || !existsRole {
+		h.errorHandler(c, http.StatusUnauthorized, errors.New("not fount `user_id` or `user_role`"))
+		return
+	}
+
 	//userId := c.GetInt(userCtx)
-	userId := c.GetInt(userCtx)
+	var request struct {
+		ID uint `json:"id"`
+	}
 
-	//id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err := c.BindJSON(&request); err != nil {
+		h.errorHandler(c, http.StatusBadRequest, err)
+		return
+	}
 
-	err := h.Repository.DeleteTenderByID(uint(userId))
+	if request.ID == 0 {
+		h.errorHandler(c, http.StatusBadRequest, errors.New("param `id` not found"))
+		return
+	}
+
+	//userId := c.GetInt(userCtx)
+
+	tender, err := h.Repository.TenderByID(request.ID)
+	if err != nil {
+		h.errorHandler(c, http.StatusInternalServerError, fmt.Errorf("tender with `id` = %d not found", tender.ID))
+		return
+	}
+
+	if tender.UserID != userID && userRole == role.Buyer {
+		h.errorHandler(c, http.StatusForbidden, errors.New("you are not the creator. you can't delete a tender"))
+		return
+	}
+
+	err = h.Repository.DeleteTenderByID(request.ID)
 	if err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, "deleted")
+	h.successHandler(c, "tender_id", request.ID)
 }
 
 // UpdateTenderCompany godoc
@@ -232,18 +336,19 @@ func (h *Handler) DeleteTender(c *gin.Context) {
 // @Failure      500          {object}  error
 // @Router       /api/tender-request-company [put]
 func (h *Handler) UpdateTenderCompany(c *gin.Context) {
-	var TenderCompany ds.TenderCompany
-	if err := c.BindJSON(&TenderCompany); err != nil {
+	//var TenderCompany ds.TenderCompany
+	var TenderCompanyU ds.TenderCompanyUpdate
+	if err := c.BindJSON(&TenderCompanyU); err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
 	}
 
-	if TenderCompany.TenderID == 0 || TenderCompany.CompanyID == 0 {
-		h.errorHandler(c, http.StatusBadRequest, errors.New("не верные id тендера или кампапии"))
-		return
-	}
+	//if TenderCompanyU.TenderID == 0 || TenderCompanyU.CompanyID == 0 {
+	//	h.errorHandler(c, http.StatusBadRequest, errors.New("не верные id тендера или кампапии"))
+	//	return
+	//}
 
-	err := h.Repository.UpdateTenderCompany(TenderCompany.TenderID, TenderCompany.CompanyID, TenderCompany.Cash)
+	err := h.Repository.UpdateTenderCompany(TenderCompanyU.ID, TenderCompanyU.Cash)
 	if err != nil {
 		h.errorHandler(c, http.StatusInternalServerError, err)
 	}
