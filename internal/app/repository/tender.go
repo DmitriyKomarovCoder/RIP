@@ -9,11 +9,41 @@ import (
 	"gorm.io/gorm"
 )
 
+func (r *Repository) TenderByUserID(userID string) (*[]ds.Tender, error) {
+	var tenders []ds.Tender
+	result := r.db.Preload("User").
+		//Preload("TenderCompanies.Tender.User").
+		Preload("Moderator").
+		Where("user_id = ? AND status != 'удален' AND status != 'черновик'", userID).
+		Find(&tenders)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		} else {
+			return nil, result.Error
+		}
+	}
+	return &tenders, result.Error
+}
+
 func (r *Repository) TenderByID(id uint) (*ds.Tender, error) {
 	tender := ds.Tender{}
 	result := r.db.Preload("User").
+		Preload("TenderCompanies.Tenders").
+		Preload("TenderCompanies.Company").
 		First(&tender, id)
 	return &tender, result.Error
+}
+
+func (r *Repository) TenderDraftId(userId uint) (uint, error) {
+	var tender ds.Tender
+	result := r.db.
+		Where("status = ? AND user_id = ?", "черновик", userId).
+		First(&tender)
+	if result.RowsAffected == 0 {
+		return 0, nil
+	}
+	return tender.ID, result.Error
 }
 
 func (r *Repository) GetTenderDraftID(creatorID uint) (uint, error) {
@@ -89,36 +119,54 @@ func (r *Repository) GetTenderWithDataByID(requestID uint, userId uint, isAdmin 
 //	return monitoringRequests, nil
 //}
 
-func (r *Repository) TenderList(status, start, end string, userId string, isAdmin bool) (*[]ds.Tender, error) {
-	var tender []ds.Tender
-	ending := " AND user_id = " + userId
-	if isAdmin {
-		ending = ""
+func (r *Repository) TendersList(statusID string, startDate time.Time, endDate time.Time) (*[]ds.Tender, error) {
+	var tenders []ds.Tender
+	if statusID == "" {
+		result := r.db.
+			Preload("User").
+			Preload("Moderator").
+			Where("status != 'удален' AND creation_date BETWEEN ? AND ?", startDate, endDate).
+			Find(&tenders)
+		return &tenders, result.Error
 	}
 
-	query := r.db.Where("status != ?"+ending, "удален")
-
-	if status != "" {
-		query = query.Where("status = ?", status)
-	}
-
-	if start != "" {
-		query = query.Where("creation_date >= ?", start)
-	}
-
-	if end != "" {
-		query = query.Where("creation_date <= ?", end)
-	}
-	query = query.Order("id ASC")
-	result := query.
+	result := r.db.
 		Preload("User").
-		Preload("TenderCompanies.Company").
-		Preload("TenderCompanies.Tenders").
-		Preload("Moderator").
-		Find(&tender)
-	return &tender, result.Error
-
+		Where("status = ? AND creation_date BETWEEN ? AND ?", statusID, startDate, endDate).
+		Find(&tenders)
+	return &tenders, result.Error
 }
+
+//func (r *Repository) TenderList(status, start, end string, userId string, isAdmin bool) (*[]ds.Tender, error) {
+//	var tender []ds.Tender
+//	ending := " AND user_id = " + userId
+//	if isAdmin {
+//		ending = ""
+//	}
+//
+//	query := r.db.Where("status != ?"+ending, "удален")
+//
+//	if status != "" {
+//		query = query.Where("status = ?", status)
+//	}
+//
+//	if start != "" {
+//		query = query.Where("creation_date >= ?", start)
+//	}
+//
+//	if end != "" {
+//		query = query.Where("creation_date <= ?", end)
+//	}
+//	query = query.Order("id ASC")
+//	result := query.
+//		Preload("User").
+//		Preload("TenderCompanies.Company").
+//		Preload("TenderCompanies.Tenders").
+//		Preload("Moderator").
+//		Find(&tender)
+//	return &tender, result.Error
+//
+//}
 
 func (r *Repository) UpdateTender(updatedTender *ds.Tender) error {
 	oldTender := ds.Tender{}

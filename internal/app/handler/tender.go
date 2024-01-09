@@ -8,7 +8,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+	"time"
 )
+
+func ParseDateString(dateString string) (time.Time, error) {
+	format := "2006-01-02"
+	parsedTime, err := time.Parse(format, dateString)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return parsedTime, nil
+}
 
 // TenderList godoc
 // @Summary      Get list of tender requests
@@ -31,27 +42,49 @@ func (h *Handler) TenderList(ctx *gin.Context) {
 		return
 	}
 
-	queryStatus, _ := ctx.GetQuery("status")
-
-	queryStart, _ := ctx.GetQuery("start")
-
-	queryEnd, _ := ctx.GetQuery("end")
-	isAdmin := false
 	switch userRole {
-	case role.Moderator:
-		isAdmin = true
-	case role.Admin:
-		isAdmin = true
+	case role.Buyer:
+		h.tenderByUserId(ctx, fmt.Sprintf("%d", userID))
+		return
 	default:
 		break
 	}
 
-	tenders, err := h.Repository.TenderList(queryStatus, queryStart, queryEnd, fmt.Sprintf("%d", userID), isAdmin)
+	queryStatus := ctx.Query("status_id")
+	startDateStr := ctx.Query("start_date")
+	endDateStr := ctx.Query("end_date")
 
-	if err != nil {
-		h.errorHandler(ctx, http.StatusBadRequest, err)
+	if startDateStr == "" {
+		startDateStr = "0001-01-01"
+	}
+	if endDateStr == "" {
+		endDateStr = time.Now().Format("2006-01-02")
+	}
+
+	startDate, errStart := ParseDateString(startDateStr)
+	endDate, errEnd := ParseDateString(endDateStr)
+	h.Logger.Info(startDate, endDate)
+	if errEnd != nil || errStart != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("incorrect `start_date` or `end_date`"))
 		return
 	}
+
+	tenders, err := h.Repository.TendersList(queryStatus, startDate, endDate)
+
+	if err != nil {
+		h.errorHandler(ctx, http.StatusNoContent, err)
+		return
+	}
+	h.successHandler(ctx, "tenders", tenders)
+}
+
+func (h *Handler) tenderByUserId(ctx *gin.Context, userID string) {
+	tenders, errDB := h.Repository.TenderByUserID(userID)
+	if errDB != nil {
+		h.errorHandler(ctx, http.StatusInternalServerError, errDB)
+		return
+	}
+
 	h.successHandler(ctx, "tenders", tenders)
 }
 

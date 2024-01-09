@@ -4,6 +4,7 @@ import (
 	"RIP/internal/app/ds"
 	"RIP/internal/app/utils"
 	"errors"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 
@@ -93,26 +94,34 @@ func (h *Handler) GetCompanyById(ctx *gin.Context) {
 // @Param        id  path  int  true  "Company ID"
 // @Success      200  {object}  map[string]any
 // @Failure      400  {object}  error
-// @Router       /api/companies/{id} [delete]
+// @Router       /api/companies [delete]
 func (h *Handler) DeleteCompany(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
-	if err != nil {
+
+	//id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
+	//if err != nil {
+	//	h.errorHandler(ctx, http.StatusBadRequest, err)
+	//	return
+	//}
+	var request struct {
+		ID string `json:"id"`
+	}
+	if err := ctx.BindJSON(&request); err != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
-
+	id, err2 := strconv.Atoi(request.ID)
+	if err2 != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err2)
+		return
+	}
 	if id == 0 {
 		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
 		return
 	}
 
 	url := h.Repository.DeleteCompanyImage(uint(id))
-	if err != nil {
-		h.errorHandler(ctx, http.StatusBadRequest, err)
-		return
-	}
 
-	h.DeleteImage(utils.ExtractObjectNameFromUrl(url))
+	err := h.DeleteImage(utils.ExtractObjectNameFromUrl(url))
 	if err != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
@@ -127,6 +136,22 @@ func (h *Handler) DeleteCompany(ctx *gin.Context) {
 	}
 
 	h.successHandler(ctx, "deleted_id", id)
+}
+
+func (h *Handler) TenderCurrent(ctx *gin.Context) {
+	userID, existsUser := ctx.Get("user_id")
+	if !existsUser {
+		h.errorHandler(ctx, http.StatusUnauthorized, errors.New("not fount `user_id` or `user_role`"))
+		return
+	}
+
+	tenders, errDB := h.Repository.TenderDraftId(userID.(uint))
+	if errDB != nil {
+		h.errorHandler(ctx, http.StatusInternalServerError, errDB)
+		return
+	}
+
+	h.successHandler(ctx, "tenders", tenders)
 }
 
 // AddCompany godoc
@@ -145,12 +170,7 @@ func (h *Handler) DeleteCompany(ctx *gin.Context) {
 func (h *Handler) AddCompany(ctx *gin.Context) {
 	var newCompany ds.Company
 
-	if newCompany.ID != 0 {
-		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
-		return
-	}
-
-	newCompany.CompanyName = ctx.Request.FormValue("name")
+	newCompany.CompanyName = ctx.Request.FormValue("company_name")
 	//if newCompany.CompanyName == "" {
 	//	h.errorHandler(ctx, http.StatusBadRequest, errors.New("имя компании не может быть пустой"))
 	//	return
@@ -167,8 +187,9 @@ func (h *Handler) AddCompany(ctx *gin.Context) {
 	//	h.errorHandler(ctx, http.StatusBadRequest, errors.New("описание не может быть пустой"))
 	//	return
 	//}
+	newCompany.Status = ctx.Request.FormValue("status")
 
-	file, header, err := ctx.Request.FormFile("image")
+	file, header, err := ctx.Request.FormFile("image_url")
 	if err != http.ErrMissingFile && err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "ошибка при загрузке изображения"})
 		return
@@ -201,15 +222,15 @@ func (h *Handler) AddCompany(ctx *gin.Context) {
 // @Param        image       formData    file    false       "image"
 // @Success      200         {object}    map[string]any
 // @Failure      400         {object}    error
-// @Router       /api/companies/{id} [put]
+// @Router       /api/companies/ [put]
 func (h *Handler) UpdateCompany(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
-	if err != nil {
-		h.errorHandler(ctx, http.StatusBadRequest, err)
-		return
-	}
+	//, err := strconv.ParseUint(ctx.Param("id")[:], 10, 64)
+	//if err != nil {
+	//	h.errorHandler(ctx, http.StatusBadRequest, err)
+	//	return
+	//}
 
-	file, header, err := ctx.Request.FormFile("image")
+	//file, header, err := ctx.Request.FormFile("image")
 	// if err != nil {
 	// 	h.errorHandler(ctx, http.StatusBadRequest, err)
 	// 	return
@@ -221,36 +242,57 @@ func (h *Handler) UpdateCompany(ctx *gin.Context) {
 	// 	return
 	// }
 
+	//var updatedCompany ds.Company
+	//
+	////updatedCompany.ID = uint(id)
+	//
+	//if updatedCompany.ID == 0 {
+	//	h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
+	//}
 	var updatedCompany ds.Company
-
-	updatedCompany.ID = uint(id)
-
-	if updatedCompany.ID == 0 {
-		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
-	}
-
-	updatedCompany.CompanyName = ctx.Request.FormValue("name")
-	updatedCompany.IIN = ctx.Request.FormValue("IIN")
-	updatedCompany.Description = ctx.Request.FormValue("description")
-
-	if header != nil && header.Size != 0 {
-		if updatedCompany.ImageURL, err = h.SaveImage(ctx.Request.Context(), file, header); err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err})
-			return
-		}
-
-		url := h.Repository.DeleteCompanyImage(updatedCompany.ID)
-
-		if err = h.DeleteImage(utils.ExtractObjectNameFromUrl(url)); err != nil {
-			h.errorHandler(ctx, http.StatusBadRequest, err)
-			return
-		}
-	}
-
-	if _, err := h.Repository.UpdateCompany(&updatedCompany); err != nil {
+	if err := ctx.BindJSON(&updatedCompany); err != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, err)
 		return
 	}
+	if updatedCompany.ImageURL != "" {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New(`image_url must be empty`))
+		return
+	}
+	if updatedCompany.Status != "действует" && updatedCompany.Status != "удален" {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New(`status_id может быть только действует или удален`))
+		return
+	}
+
+	if updatedCompany.ID == 0 {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
+		return
+	}
+	if err := h.Repository.UpdateCompany(&updatedCompany); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+	//updatedCompany.CompanyName = ctx.Request.FormValue("name")
+	//updatedCompany.IIN = ctx.Request.FormValue("IIN")
+	//updatedCompany.Description = ctx.Request.FormValue("description")
+
+	//if header != nil && header.Size != 0 {
+	//	if updatedCompany.ImageURL, err = h.SaveImage(ctx.Request.Context(), file, header); err != nil {
+	//		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err})
+	//		return
+	//	}
+	//
+	//	url := h.Repository.DeleteCompanyImage(updatedCompany.ID)
+	//
+	//	if err = h.DeleteImage(utils.ExtractObjectNameFromUrl(url)); err != nil {
+	//		h.errorHandler(ctx, http.StatusBadRequest, err)
+	//		return
+	//	}
+	//}
+
+	//if _, err := h.Repository.UpdateCompany(&updatedCompany); err != nil {
+	//	h.errorHandler(ctx, http.StatusBadRequest, err)
+	//	return
+	//}
 
 	h.successHandler(ctx, "updated_company", gin.H{
 		"id":           updatedCompany.ID,
@@ -260,6 +302,55 @@ func (h *Handler) UpdateCompany(ctx *gin.Context) {
 		"status":       updatedCompany.Status,
 		"iin":          updatedCompany.IIN,
 	})
+}
+
+func (h *Handler) AddImage(ctx *gin.Context) {
+	file, header, err := ctx.Request.FormFile("file")
+	companyID := ctx.Request.FormValue("company_id")
+
+	if companyID == "" {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("param `id` not found"))
+		return
+	}
+	if header == nil || header.Size == 0 {
+		h.errorHandler(ctx, http.StatusBadRequest, errors.New("no file uploaded"))
+		return
+	}
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+	defer func(file multipart.File) {
+		errLol := file.Close()
+		if errLol != nil {
+			h.errorHandler(ctx, http.StatusInternalServerError, errLol)
+			return
+		}
+	}(file)
+
+	ID, _ := strconv.Atoi(companyID)
+	url := h.Repository.DeleteCompanyImage(uint(ID))
+
+	if err = h.DeleteImage(utils.ExtractObjectNameFromUrl(url)); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	var imageURL string
+	if imageURL, err = h.SaveImage(ctx.Request.Context(), file, header); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err})
+		return
+	}
+
+	var updatedCompany ds.Company
+	updatedCompany.ID = uint(ID)
+	updatedCompany.ImageURL = imageURL
+	if err := h.Repository.UpdateCompany(&updatedCompany); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	h.successAddHandler(ctx, "image_url", imageURL)
 }
 
 // AddCompanyToRequest godoc

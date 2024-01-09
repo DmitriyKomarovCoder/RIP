@@ -57,17 +57,19 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 
 	api := router.Group("/api")
 	// услуги
-	api.GET("/companies", h.CompaniesList)      // ?
-	api.GET("/companies/:id", h.GetCompanyById) // ?
-	api.POST("/companies", h.AddCompany)
-	api.PUT("/companies/:id", h.WithAuthCheck(role.Moderator, role.Admin), h.UpdateCompany)
-	api.DELETE("/companies/:id", h.WithAuthCheck(role.Moderator, role.Admin), h.DeleteCompany)
+	api.GET("/companies", h.WithoutJWTError(role.Buyer, role.Moderator, role.Admin), h.CompaniesList) // ?
+	api.GET("/companies/:id", h.GetCompanyById)                                                       // ?
+	api.POST("/companies", h.WithAuthCheck(role.Moderator, role.Admin), h.AddCompany)
+	api.PUT("/companies", h.WithAuthCheck(role.Moderator, role.Admin), h.UpdateCompany)
+	api.PUT("/companies/upload-image", h.WithAuthCheck(role.Moderator, role.Admin), h.AddImage)
+	api.DELETE("/companies", h.WithAuthCheck(role.Moderator, role.Admin), h.DeleteCompany)
 	api.POST("/companies/request", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.AddCompanyToRequest)
 	api.Use(cors.Default()).DELETE("/companies/delete/:id", h.DeleteCompany)
 
 	// заявки
 	api.GET("/tenders", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.TenderList)
 	api.GET("/tenders/:id", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.GetTenderById)
+	api.GET("/tenders/current", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.TenderCurrent)
 	// api.POST("/tenders/", h.CreateDraft)
 	api.PUT("/tenders", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.UpdateTender)
 

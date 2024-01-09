@@ -5,7 +5,6 @@ import (
 	"RIP/internal/app/utils"
 	"errors"
 	"strings"
-	"time"
 )
 
 func (r *Repository) GetOpenCompanys() (*[]ds.Company, error) {
@@ -52,18 +51,18 @@ func (r *Repository) DeleteCompany(id uint) error {
 		return err
 	}
 
-	if err := r.db.Model(&company).Update("deleted_at", time.Now()).Error; err != nil {
-		return err
-	}
+	//if err := r.db.Model(&company).Update("deleted_at", time.Now()).Error; err != nil {
+	//	return err
+	//}
 
 	return nil
 }
 
-func (r *Repository) UpdateCompany(updatedCompany *ds.Company) (*ds.Company, error) {
+func (r *Repository) UpdateCompany(updatedCompany *ds.Company) error {
 	var oldCompany ds.Company
 
 	if result := r.db.First(&oldCompany, updatedCompany.ID); result.Error != nil {
-		return updatedCompany, result.Error
+		return result.Error
 	}
 
 	if updatedCompany.CompanyName != "" {
@@ -78,13 +77,17 @@ func (r *Repository) UpdateCompany(updatedCompany *ds.Company) (*ds.Company, err
 		oldCompany.Description = updatedCompany.Description
 	}
 
+	if updatedCompany.Status != "" {
+		oldCompany.Status = updatedCompany.Status
+	}
+
 	if updatedCompany.IIN != "" {
 		oldCompany.IIN = updatedCompany.IIN
 	}
 
 	*updatedCompany = oldCompany
 	result := r.db.Save(updatedCompany)
-	return updatedCompany, result.Error
+	return result.Error
 }
 
 func (r *Repository) DeleteCompanyImage(companyId uint) string {
