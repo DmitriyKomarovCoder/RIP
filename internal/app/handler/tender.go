@@ -146,7 +146,7 @@ func (h *Handler) UpdateTender(ctx *gin.Context) {
 	updatedT.ID = updatedTender.ID
 	updatedT.Name = updatedTender.Name
 
-	tender, err := h.Repository.TenderByID(updatedT.ID)
+	tender, err := h.Repository.TenderModel(updatedT.ID)
 
 	if err != nil {
 		h.errorHandler(ctx, http.StatusInternalServerError, fmt.Errorf("hike with `id` = %d not found", tender.ID))
@@ -337,7 +337,7 @@ func (h *Handler) DeleteTender(c *gin.Context) {
 
 	//userId := c.GetInt(userCtx)
 
-	tender, err := h.Repository.TenderByID(request.ID)
+	tender, err := h.Repository.TenderModel(request.ID)
 	if err != nil {
 		h.errorHandler(c, http.StatusInternalServerError, fmt.Errorf("tender with `id` = %d not found", tender.ID))
 		return

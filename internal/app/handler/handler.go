@@ -91,8 +91,8 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	api.POST("/user/logout", h.Logout)
 
 	// асинхронный сервис
-	api.PUT("/tenders/user-form-start", h.WithoutJWTError(role.Buyer), h.UserRequest) // обращение к асинхронному сервису
-	api.PUT("/tenders/user-form-finish", h.FinishUserRequest)                         // обращение к асинхронному сервису
+	api.PUT("/tenders/user-form-start", h.WithoutJWTError(role.Buyer, role.Moderator, role.Admin), h.UserRequest) // обращение к асинхронному сервису
+	api.PUT("/tenders/user-form-finish", h.FinishUserRequest)                                                     // обращение к асинхронному сервису
 
 }
 

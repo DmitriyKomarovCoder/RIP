@@ -9,8 +9,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func (r *Repository) TenderByUserID(userID string) (*[]ds.Tender, error) {
+func (r *Repository) TenderByUserID(userID string) (*[]ds.TenderResponse, error) {
 	var tenders []ds.Tender
+	var tenderResponses = []ds.TenderResponse{}
 	result := r.db.Preload("User").
 		//Preload("TenderCompanies.Tender.User").
 		Preload("Moderator").
@@ -23,13 +24,70 @@ func (r *Repository) TenderByUserID(userID string) (*[]ds.Tender, error) {
 			return nil, result.Error
 		}
 	}
-	return &tenders, result.Error
+
+	for _, tender := range tenders {
+		tenderResponse := ds.TenderResponse{
+			ID:        tender.ID,
+			Name:      tender.Name,
+			UserName:  tender.User.Name,
+			UserLogin: tender.User.Login,
+			//UserRole:       tender.User.Role,
+			ModeratorName: tender.Moderator.Name,
+			Status:        tender.Status,
+			StatusCheck:   tender.StatusCheck,
+			//ModeratorRole:  tender.Moderator.Role,
+			ModeratorLogin:  tender.Moderator.Login,
+			CreationDate:    tender.CreationDate,
+			FormationDate:   tender.FormationDate,
+			CompletionDate:  tender.CompletionDate,
+			TenderCompanies: tender.TenderCompanies,
+		}
+		tenderResponses = append(tenderResponses, tenderResponse)
+	}
+
+	return &tenderResponses, result.Error
 }
 
-func (r *Repository) TenderByID(id uint) (*ds.Tender, error) {
+func (r *Repository) TenderByID(id uint) (*ds.TenderResponse, error) {
 	tender := ds.Tender{}
+
 	result := r.db.Preload("User").
-		Preload("TenderCompanies.Tenders").
+		//Preload("TenderCompanies.Tenders").
+		Preload("TenderCompanies.Company").
+		First(&tender, id)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		} else {
+			return nil, result.Error
+		}
+	}
+
+	tenderResponse := ds.TenderResponse{
+		ID:        tender.ID,
+		Name:      tender.Name,
+		UserName:  tender.User.Name,
+		UserLogin: tender.User.Login,
+		//UserRole:       tender.User.Role,
+		ModeratorName: tender.Moderator.Name,
+		Status:        tender.Status,
+		StatusCheck:   tender.StatusCheck,
+		//ModeratorRole:  tender.Moderator.Role,
+		ModeratorLogin:  tender.Moderator.Login,
+		CreationDate:    tender.CreationDate,
+		FormationDate:   tender.FormationDate,
+		CompletionDate:  tender.CompletionDate,
+		TenderCompanies: tender.TenderCompanies,
+	}
+	return &tenderResponse, result.Error
+}
+
+func (r *Repository) TenderModel(id uint) (*ds.Tender, error) {
+	tender := ds.Tender{}
+
+	result := r.db.Preload("User").
+		//Preload("TenderCompanies.Tenders").
 		Preload("TenderCompanies.Company").
 		First(&tender, id)
 	return &tender, result.Error
@@ -119,22 +177,81 @@ func (r *Repository) GetTenderWithDataByID(requestID uint, userId uint, isAdmin 
 //	return monitoringRequests, nil
 //}
 
-func (r *Repository) TendersList(statusID string, startDate time.Time, endDate time.Time) (*[]ds.Tender, error) {
+func (r *Repository) TendersList(statusID string, startDate time.Time, endDate time.Time) (*[]ds.TenderResponse, error) {
 	var tenders []ds.Tender
+	tenderResponses := []ds.TenderResponse{}
 	if statusID == "" {
 		result := r.db.
 			Preload("User").
 			Preload("Moderator").
-			Where("status != 'удален' AND creation_date BETWEEN ? AND ?", startDate, endDate).
+			Where("status != 'удален' AND status != 'черновик' AND creation_date BETWEEN ? AND ?", startDate, endDate).
 			Find(&tenders)
-		return &tenders, result.Error
+
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil, nil
+			} else {
+				return nil, result.Error
+			}
+		}
+
+		for _, tender := range tenders {
+			tenderResponse := ds.TenderResponse{
+				ID:        tender.ID,
+				Name:      tender.Name,
+				UserName:  tender.User.Name,
+				UserLogin: tender.User.Login,
+				//UserRole:       tender.User.Role,
+				ModeratorName: tender.Moderator.Name,
+				Status:        tender.Status,
+				StatusCheck:   tender.StatusCheck,
+				//ModeratorRole:  tender.Moderator.Role,
+				ModeratorLogin:  tender.Moderator.Login,
+				CreationDate:    tender.CreationDate,
+				FormationDate:   tender.FormationDate,
+				CompletionDate:  tender.CompletionDate,
+				TenderCompanies: tender.TenderCompanies,
+			}
+			tenderResponses = append(tenderResponses, tenderResponse)
+		}
+
+		return &tenderResponses, result.Error
 	}
 
 	result := r.db.
 		Preload("User").
-		Where("status = ? AND creation_date BETWEEN ? AND ?", statusID, startDate, endDate).
+		Where("status = ? AND status != 'черновик' AND creation_date BETWEEN ? AND ?", statusID, startDate, endDate).
 		Find(&tenders)
-	return &tenders, result.Error
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		} else {
+			return nil, result.Error
+		}
+	}
+
+	for _, tender := range tenders {
+		tenderResponse := ds.TenderResponse{
+			ID:        tender.ID,
+			Name:      tender.Name,
+			UserName:  tender.User.Name,
+			UserLogin: tender.User.Login,
+			Status:    tender.Status,
+			//UserRole:       tender.User.Role,
+			ModeratorName: tender.Moderator.Name,
+			//ModeratorRole:  tender.Moderator.Role,
+			ModeratorLogin:  tender.Moderator.Login,
+			StatusCheck:     tender.StatusCheck,
+			CreationDate:    tender.CreationDate,
+			FormationDate:   tender.FormationDate,
+			CompletionDate:  tender.CompletionDate,
+			TenderCompanies: tender.TenderCompanies,
+		}
+		tenderResponses = append(tenderResponses, tenderResponse)
+	}
+
+	return &tenderResponses, result.Error
 }
 
 //func (r *Repository) TenderList(status, start, end string, userId string, isAdmin bool) (*[]ds.Tender, error) {
@@ -208,12 +325,30 @@ func (r *Repository) FormTenderRequestByID(creatorID uint) (error, uint) {
 	if res.RowsAffected == 0 {
 		return errors.New("нет такой заявки"), 0
 	}
-
+	req.StatusCheck = "В обработке"
 	req.Status = "сформирован"
 	req.FormationDate = time.Now()
 
 	if err := r.db.Save(&req).Error; err != nil {
 		return err, 0
+	}
+
+	return nil, req.ID
+}
+
+func (r *Repository) GetTenderByUser(creatorID uint) (error, uint) {
+	var req ds.Tender
+	res := r.db.
+		//Where("id = ?", requestID).
+		Where("user_id = ?", creatorID).
+		Where("status = ?", utils.Draft).
+		Take(&req)
+
+	if res.Error != nil {
+		return res.Error, 0
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("нет такой заявки"), 0
 	}
 
 	return nil, req.ID
@@ -356,8 +491,8 @@ func (r *Repository) SaveRequest(monitoringRequest ds.RequestAsyncService) error
 		r.logger.Error("error while getting monitoring request")
 		return err.Error
 	}
-	request.CompletionDate = time.Now()
-	request.Status = monitoringRequest.Status
+	//request.CompletionDate = time.Now()
+	request.StatusCheck = monitoringRequest.Status
 	res := r.db.Save(&request)
 	return res.Error
 }

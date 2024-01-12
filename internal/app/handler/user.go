@@ -181,14 +181,25 @@ const (
 )
 
 func (h *Handler) UserRequest(c *gin.Context) {
+
 	var request ds.RequestAsyncService
 	if err := c.BindJSON(&request); err != nil {
 		c.AbortWithError(http.StatusBadRequest, errors.New("неверный формат"))
 		return
 	}
 
-	request.Token = ServerToken
+	userID, exists := c.Get("user_id")
+	if !exists {
+		h.errorHandler(c, http.StatusUnauthorized, errors.New("user_id not found"))
+		return
+	}
 
+	request.Token = ServerToken
+	var err1 error
+	err1, request.RequestId = h.Repository.GetTenderByUser(userID.(uint))
+	if err1 != nil {
+		h.errorHandler(c, http.StatusBadRequest, err1)
+	}
 	body, _ := json.Marshal(request)
 
 	client := &http.Client{}
@@ -207,6 +218,11 @@ func (h *Handler) UserRequest(c *gin.Context) {
 	}
 
 	if resp.StatusCode == 200 {
+		err, _ := h.Repository.FormTenderRequestByID(userID.(uint))
+		if err != nil {
+			h.errorHandler(c, http.StatusBadRequest, err)
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "заявка принята в обработку"})
 		return
 	}
