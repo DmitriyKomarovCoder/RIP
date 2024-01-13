@@ -3,6 +3,7 @@ package handler
 import (
 	"RIP/internal/app/ds"
 	"RIP/internal/app/role"
+	"RIP/internal/app/utils"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -194,12 +195,23 @@ func (h *Handler) UserRequest(c *gin.Context) {
 		return
 	}
 
-	request.Token = ServerToken
-	var err1 error
-	err1, request.RequestId = h.Repository.GetTenderByUser(userID.(uint))
-	if err1 != nil {
-		h.errorHandler(c, http.StatusBadRequest, err1)
+	//request.Token = ServerToken
+	//var err1 error
+	//err1, request.RequestId = h.Repository.GetTenderByUser(userID.(uint))
+	//if err1 != nil {
+	//	h.errorHandler(c, http.StatusBadRequest, err1)
+	//}
+
+	err, reqT := h.Repository.GetTenderByID(userID.(uint), request.RequestId)
+	if err != nil {
+		h.errorHandler(c, http.StatusBadRequest, errors.New("request not found"))
 	}
+
+	if reqT.Status != utils.Draft && reqT.Status != "сформирован" {
+		h.errorHandler(c, http.StatusBadRequest, errors.New("нельзя менять завершенные и отклоненные заявки"))
+
+	}
+
 	body, _ := json.Marshal(request)
 
 	client := &http.Client{}
@@ -216,9 +228,10 @@ func (h *Handler) UserRequest(c *gin.Context) {
 		fmt.Println("Error sending request:", err)
 		return
 	}
+	//err, _ := h.Repository.FormTenderRequestByIDAsynce(request.RequestId, userID.(uint))
 
 	if resp.StatusCode == 200 {
-		err, _ := h.Repository.FormTenderRequestByID(userID.(uint))
+		err, _ := h.Repository.FormTenderRequestByIDAsynce(request.RequestId, userID.(uint))
 		if err != nil {
 			h.errorHandler(c, http.StatusBadRequest, err)
 			return

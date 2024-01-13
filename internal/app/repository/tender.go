@@ -311,6 +311,32 @@ func (r *Repository) UpdateTender(updatedTender *ds.Tender) error {
 	return result.Error
 }
 
+func (r *Repository) FormTenderRequestByIDAsynce(id uint, creatorID uint) (error, uint) {
+	var req ds.Tender
+	res := r.db.
+		Where("id = ?", id).
+		Where("user_id = ?", creatorID).
+		Where("status = ?", utils.Draft).
+		Take(&req)
+
+	if res.Error != nil {
+		return res.Error, 0
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("нет такой заявки"), 0
+	}
+
+	req.StatusCheck = "В обработке"
+	req.Status = "сформирован"
+	req.FormationDate = time.Now()
+
+	if err := r.db.Save(&req).Error; err != nil {
+		return err, 0
+	}
+
+	return nil, req.ID
+}
+
 func (r *Repository) FormTenderRequestByID(creatorID uint) (error, uint) {
 	var req ds.Tender
 	res := r.db.
@@ -352,6 +378,24 @@ func (r *Repository) GetTenderByUser(creatorID uint) (error, uint) {
 	}
 
 	return nil, req.ID
+}
+
+func (r *Repository) GetTenderByID(creatorID uint, id uint) (error, ds.Tender) {
+	var req ds.Tender
+	res := r.db.
+		Where("id = ?", id).
+		Where("user_id = ?", creatorID).
+		Where("status = ?", utils.Draft).
+		Take(&req)
+
+	if res.Error != nil {
+		return res.Error, req
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("нет такой заявки"), req
+	}
+
+	return nil, req
 }
 
 //func (r *Repository) RejectTenderRequestByID(requestID, moderatorID uint) error {

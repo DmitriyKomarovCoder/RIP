@@ -49,7 +49,7 @@ type TenderDetails struct {
 
 type RequestAsyncService struct {
 	RequestId uint   `gorm:"primaryKey" json:"requestId"`
-	Token     string `json:"Server-Token"`
+	Token     string `json:"Server_Token"`
 	Status    string `json:"status"`
 }
 
