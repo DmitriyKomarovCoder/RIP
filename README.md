@@ -17,7 +17,7 @@
 # Фронтенд:
 - [SPA (лаб 4)](https://github.com/DmitriyKomarovCoder/RIP_Frontend/tree/SPA)
 - [Redux (лаб 6)](https://github.com/DmitriyKomarovCoder/RIP_Frontend/tree/Redux)
-- [Pages](https://dmitriykomarovcoder.github.io/RIP_Frontend/companies)
+- [Pages](https://dmitriykomarovcoder.github.io/RIP_Frontend/)
 
 # Мобильное приложение:
 - [React Native (лаб 7)](https://github.com/DmitriyKomarovCoder/RIP_MobileApp)
