@@ -8,10 +8,11 @@ import (
 	"RIP/internal/app/pkg/hash"
 	"RIP/internal/app/redis"
 	"RIP/internal/app/repository"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"net/http"
 	"os"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go"
@@ -87,9 +88,8 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	api.POST("/user/signUp", h.SignUp)
 	api.POST("/user/logout", h.Logout)
 
-	// async
 	// асинхронный сервис
-	api.PUT("/tenders/user-form-start", h.WithAuthCheck([]ds.Role{ds.Client}), h.UserRequest)
+	api.PUT("/tenders/user-form-start", h.WithAuthCheck([]ds.Role{ds.Client}), h.UserRequest) // обращение к асинхронному сервису
 	api.PUT("/tenders/user-form-finish", h.FinishUserRequest)
 }
 

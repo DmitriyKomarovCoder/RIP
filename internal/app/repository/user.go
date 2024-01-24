@@ -4,13 +4,14 @@ import (
 	"RIP/internal/app/ds"
 	"context"
 	"fmt"
+
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func GetUserInfo(r *Repository, id uint) (ds.User, error) {
 	var user ds.User
 
-	result := r.db.Where("id = ?", id).Find(&user)
+	result := r.db.Where("user_id = ?", id).Find(&user)
 
 	if result.Error != nil {
 		return ds.User{}, result.Error
