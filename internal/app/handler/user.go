@@ -3,7 +3,6 @@ package handler
 import (
 	"RIP/internal/app/ds"
 	"RIP/internal/app/role"
-	"RIP/internal/app/utils"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -113,7 +112,7 @@ func (h *Handler) Login(ctx *gin.Context) {
 			"access_token": strToken,
 			"token_type":   "Bearer",
 			"role":         user.Role,
-			"name":         user.Name,
+			"userName":     user.Name,
 		})
 		return
 	}
@@ -195,23 +194,6 @@ func (h *Handler) UserRequest(c *gin.Context) {
 		return
 	}
 
-	//request.Token = ServerToken
-	//var err1 error
-	//err1, request.RequestId = h.Repository.GetTenderByUser(userID.(uint))
-	//if err1 != nil {
-	//	h.errorHandler(c, http.StatusBadRequest, err1)
-	//}
-
-	err, reqT := h.Repository.GetTenderByID(userID.(uint), request.RequestId)
-	if err != nil {
-		h.errorHandler(c, http.StatusBadRequest, errors.New("request not found"))
-	}
-
-	if reqT.Status != utils.Draft && reqT.Status != "сформирован" {
-		h.errorHandler(c, http.StatusBadRequest, errors.New("нельзя менять завершенные и отклоненные заявки"))
-
-	}
-
 	body, _ := json.Marshal(request)
 
 	client := &http.Client{}
@@ -249,6 +231,10 @@ func (h *Handler) FinishUserRequest(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, err)
 		log.Println(err)
 		return
+	}
+
+	if request.Token != ServerToken {
+		c.AbortWithError(http.StatusForbidden, errors.New("токен не верный"))
 	}
 
 	// сохраняем в базу

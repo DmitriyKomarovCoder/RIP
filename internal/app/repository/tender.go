@@ -316,7 +316,7 @@ func (r *Repository) FormTenderRequestByIDAsynce(id uint, creatorID uint) (error
 	res := r.db.
 		Where("id = ?", id).
 		Where("user_id = ?", creatorID).
-		Where("status = ?", utils.Draft).
+		//Where("status = ?", utils.Draft).
 		Take(&req)
 
 	if res.Error != nil {
