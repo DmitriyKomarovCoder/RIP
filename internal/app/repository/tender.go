@@ -185,6 +185,7 @@ func (r *Repository) TendersList(statusID string, startDate time.Time, endDate t
 			Preload("User").
 			Preload("Moderator").
 			Where("status != 'удален' AND status != 'черновик' AND creation_date BETWEEN ? AND ?", startDate, endDate).
+			Order("id DESC").
 			Find(&tenders)
 
 		if result.Error != nil {
@@ -354,7 +355,6 @@ func (r *Repository) FormTenderRequestByID(creatorID uint) (error, uint) {
 	req.StatusCheck = "В обработке"
 	req.Status = "сформирован"
 	req.FormationDate = time.Now()
-
 	if err := r.db.Save(&req).Error; err != nil {
 		return err, 0
 	}

@@ -7,13 +7,19 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 )
 
 func ParseDateString(dateString string) (time.Time, error) {
-	format := "2006-01-02"
-	parsedTime, err := time.Parse(format, dateString)
+	format := "2006-01-02 15:04:05"
+	re := regexp.MustCompile(`(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})`)
+	matches := re.FindStringSubmatch(dateString)
+	if len(matches) < 2 {
+		return time.Time{}, nil
+	}
+	parsedTime, err := time.Parse(format, matches[1])
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -55,14 +61,14 @@ func (h *Handler) TenderList(ctx *gin.Context) {
 	endDateStr := ctx.Query("end_date")
 
 	if startDateStr == "" {
-		startDateStr = "0001-01-01"
+		startDateStr = "0001-01-01 00:00:00"
 	}
 	if endDateStr == "" {
-		endDateStr = time.Now().Format("2006-01-02")
+		endDateStr = time.Now().Add(time.Hour * 24).String()
 	}
 
-	startDate, errStart := ParseDateString(startDateStr)
-	endDate, errEnd := ParseDateString(endDateStr)
+	startDate, errStart := ParseDateString(startDateStr + " 00:00:00")
+	endDate, errEnd := ParseDateString(endDateStr + " 00:00:00")
 	h.Logger.Info(startDate, endDate)
 	if errEnd != nil || errStart != nil {
 		h.errorHandler(ctx, http.StatusBadRequest, errors.New("incorrect `start_date` or `end_date`"))
@@ -196,7 +202,6 @@ func (h *Handler) UpdateTender(ctx *gin.Context) {
 // @Failure      500          {object}  error
 // @Router       /api/tenders/form [put]
 func (h *Handler) FormTenderRequest(c *gin.Context) {
-	//id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 	userID, existsUser := c.Get("user_id")
 	if !existsUser {
 		h.errorHandler(c, http.StatusUnauthorized, errors.New("not fount `user_id` or `user_role`"))
@@ -209,13 +214,11 @@ func (h *Handler) FormTenderRequest(c *gin.Context) {
 		return
 	}
 
-	//_, _, err = h.Repository.GetTenderWithDataByID(idTender, userID.(uint), false)
 	if err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)
 		return
 	}
 
-	//tenderDetails := ds.TenderDetails{Tender: &req, Company: &com}
 	c.Status(http.StatusOK)
 }
 
@@ -247,8 +250,6 @@ func (h *Handler) UpdateStatusTenderRequest(c *gin.Context) {
 	if status.Status != "отклонен" && status.Status != "завершен" {
 		h.errorHandler(c, http.StatusBadRequest, errors.New("статус можно поменять только на 'отклонен' и 'завершен'"))
 	}
-
-	//id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
 	if err := h.Repository.FinishRejectHelper(status.Status, status.TenderID, userID); err != nil {
 		h.errorHandler(c, http.StatusBadRequest, err)

@@ -26,9 +26,9 @@ type TenderResponse struct {
 	ID              uint            `json:"id" gorm:"primary_key"`
 	Name            string          `json:"tender_name" gorm:"type:varchar(255)"`
 	Status          string          `json:"status" gorm:"type:varchar(15)"`
-	CreationDate    time.Time       `json:"creation_date" gorm:"type:date; not null; default:current_date"`
-	FormationDate   time.Time       `json:"formation_date" gorm:"type:date"`
-	CompletionDate  time.Time       `json:"completion_date" gorm:"type:date"`
+	CreationDate    time.Time       `json:"creation_date" gorm:"not null; default:current_date"`
+	FormationDate   time.Time       `json:"formation_date"`
+	CompletionDate  time.Time       `json:"completion_date"`
 	StatusCheck     string          `json:"status_check"`
 	TenderCompanies []TenderCompany `json:"company_tenders"`
 	UserName        string          `json:"user_name"`
