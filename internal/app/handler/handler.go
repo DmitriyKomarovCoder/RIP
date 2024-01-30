@@ -69,7 +69,6 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	// заявки
 	api.GET("/tenders", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.TenderList)
 	api.GET("/tenders/:id", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.GetTenderById)
-	api.GET("/tenders/current", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.TenderCurrent)
 	// api.POST("/tenders/", h.CreateDraft)
 	api.PUT("/tenders", h.WithAuthCheck(role.Buyer, role.Moderator, role.Admin), h.UpdateTender)
 

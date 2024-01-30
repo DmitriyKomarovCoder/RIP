@@ -138,22 +138,6 @@ func (h *Handler) DeleteCompany(ctx *gin.Context) {
 	h.successHandler(ctx, "deleted_id", id)
 }
 
-func (h *Handler) TenderCurrent(ctx *gin.Context) {
-	userID, existsUser := ctx.Get("user_id")
-	if !existsUser {
-		h.errorHandler(ctx, http.StatusUnauthorized, errors.New("not fount `user_id` or `user_role`"))
-		return
-	}
-
-	tenders, errDB := h.Repository.TenderDraftId(userID.(uint))
-	if errDB != nil {
-		h.errorHandler(ctx, http.StatusInternalServerError, errDB)
-		return
-	}
-
-	h.successHandler(ctx, "tenders", tenders)
-}
-
 // AddCompany godoc
 // @Summary      Add new company
 // @Description  Add a new company with image, name, IIN
