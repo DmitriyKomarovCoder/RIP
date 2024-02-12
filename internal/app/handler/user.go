@@ -17,6 +17,11 @@ import (
 	"time"
 )
 
+type errorResp struct {
+	Status      int    `json:"status"`
+	Description string `json:"error_description"`
+}
+
 // Register godoc
 // @Summary Регистрация пользователя
 // @Description Регистрация нового пользователя.

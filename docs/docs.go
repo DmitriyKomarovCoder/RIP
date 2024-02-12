@@ -105,11 +105,9 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/api/companies/{id}": {
-            "get": {
-                "description": "Company By ID",
+            },
+            "delete": {
+                "description": "Deletes a company with the given ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -119,11 +117,11 @@ const docTemplate = `{
                 "tags": [
                     "Companies"
                 ],
-                "summary": "Company By ID",
+                "summary": "Delete company by ID",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Companies ID",
+                        "description": "Company ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -133,19 +131,18 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/ds.Company"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {}
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {}
                     }
                 }
-            },
+            }
+        },
+        "/api/companies/": {
             "put": {
                 "description": "Updates a company with the given ID",
                 "consumes": [
@@ -204,9 +201,11 @@ const docTemplate = `{
                         "schema": {}
                     }
                 }
-            },
-            "delete": {
-                "description": "Deletes a company with the given ID",
+            }
+        },
+        "/api/companies/{id}": {
+            "get": {
+                "description": "Company By ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -216,11 +215,11 @@ const docTemplate = `{
                 "tags": [
                     "Companies"
                 ],
-                "summary": "Delete company by ID",
+                "summary": "Company By ID",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Company ID",
+                        "description": "Companies ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -230,12 +229,15 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/ds.Company"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {}
                     }
                 }
@@ -284,9 +286,7 @@ const docTemplate = `{
                         "schema": {}
                     }
                 }
-            }
-        },
-        "/api/tender-request-company/{id}": {
+            },
             "delete": {
                 "description": "Deletes a company from a request based on the user ID and company ID",
                 "consumes": [
@@ -449,9 +449,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/tenders/form/{id}": {
+        "/api/tenders/form": {
             "put": {
-                "description": "Updates the status of a transaction request with the given ID on \"завершен\"/\"отклонен\"",
+                "description": "Form Company by client",
                 "consumes": [
                     "application/json"
                 ],
@@ -461,35 +461,29 @@ const docTemplate = `{
                 "tags": [
                     "Tenders"
                 ],
-                "summary": "Update transaction request status by ID",
+                "summary": "Form Company by client",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Request ID",
+                        "description": "Tender form ID",
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "update status",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/ds.NewStatus"
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/ds.TenderDetails"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {}
                     }
                 }
@@ -531,9 +525,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/user/logout": {
+        "/api/v3/users/login": {
             "post": {
-                "description": "Logs out the user by blacklisting the access token",
+                "description": "Вход нового пользователя.",
                 "consumes": [
                     "application/json"
                 ],
@@ -541,69 +535,56 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Authentication"
+                    "Пользователи"
                 ],
-                "summary": "Logout",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    }
-                }
-            }
-        },
-        "/api/user/signIn": {
-            "post": {
-                "description": "Authenticates a user and generates an access token",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "User sign-in",
+                "summary": "Аутентификация пользователя",
                 "parameters": [
                     {
-                        "description": "User information",
-                        "name": "user",
+                        "description": "Детали входа",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ds.UserLogin"
+                            "$ref": "#/definitions/ds.RegisterReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Успешная аутентификация",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/ds.LoginSwaggerResp"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
-                        "schema": {}
+                        "description": "Неверный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/handler.errorResp"
+                        }
                     },
                     "401": {
-                        "description": "Unauthorized",
-                        "schema": {}
+                        "description": "Неверные учетные данные",
+                        "schema": {
+                            "$ref": "#/definitions/handler.errorResp"
+                        }
                     },
                     "500": {
-                        "description": "Internal Server Error",
-                        "schema": {}
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/handler.errorResp"
+                        }
                     }
                 }
             }
         },
-        "/api/user/signUp": {
-            "post": {
-                "description": "Creates a new user account",
+        "/api/v3/users/logout": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Завершение сеанса текущего пользователя.",
                 "consumes": [
                     "application/json"
                 ],
@@ -611,44 +592,65 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Authentication"
+                    "Пользователи"
                 ],
-                "summary": "Sign up a new user",
-                "parameters": [
-                    {
-                        "description": "User information",
-                        "name": "user",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/ds.UserSignUp"
-                        }
-                    }
-                ],
+                "summary": "Выход пользователя",
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "Успешный выход",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "type": "string"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
-                        "schema": {}
+                        "description": "Неверный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/handler.errorResp"
+                        }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {}
+                    "401": {
+                        "description": "Неверные учетные данные",
+                        "schema": {
+                            "$ref": "#/definitions/handler.errorResp"
+                        }
                     },
                     "500": {
-                        "description": "Internal Server Error",
-                        "schema": {}
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/handler.errorResp"
+                        }
                     }
                 }
             }
         },
-        "/companies/request/{id}": {
+        "/api/v3/users/sign_up": {
+            "post": {
+                "description": "Регистрация нового пользователя.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Пользователи"
+                ],
+                "summary": "Регистрация пользователя",
+                "parameters": [
+                    {
+                        "description": "Детали регистрации",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.RegisterReq"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/companies/request": {
             "post": {
                 "description": "Adds a company to a tender request",
                 "consumes": [
@@ -668,6 +670,52 @@ const docTemplate = `{
                         "name": "threatId",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/tenders/updateStatus": {
+            "put": {
+                "description": "Updates the status of a transaction request with the given ID on \"завершен\"/\"отклонен\"",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenders"
+                ],
+                "summary": "Update transaction request status by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "update status",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.NewStatus"
+                        }
                     }
                 ],
                 "responses": {
@@ -724,10 +772,41 @@ const docTemplate = `{
                 }
             }
         },
+        "ds.LoginSwaggerResp": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
         "ds.NewStatus": {
             "type": "object",
             "properties": {
                 "status": {
+                    "type": "string"
+                },
+                "tender_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ds.RegisterReq": {
+            "type": "object",
+            "properties": {
+                "login": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "user_name": {
                     "type": "string"
                 }
             }
@@ -735,8 +814,11 @@ const docTemplate = `{
         "ds.Tender": {
             "type": "object",
             "properties": {
-                "application_name": {
-                    "type": "string"
+                "company_tenders": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ds.TenderCompany"
+                    }
                 },
                 "completion_date": {
                     "type": "string"
@@ -759,6 +841,13 @@ const docTemplate = `{
                 "status": {
                     "type": "string"
                 },
+                "status_check": {
+                    "description": "CreatorLogin    string          ` + "`" + `json:\"creator_login\"` + "`" + `\nModeratorLogin  string          ` + "`" + `json:\"moderator_login\"` + "`" + `",
+                    "type": "string"
+                },
+                "tender_name": {
+                    "type": "string"
+                },
                 "user": {
                     "$ref": "#/definitions/ds.User"
                 },
@@ -770,13 +859,16 @@ const docTemplate = `{
         "ds.TenderCompany": {
             "type": "object",
             "properties": {
-                "application": {
-                    "$ref": "#/definitions/ds.Company"
-                },
                 "cash": {
                     "type": "number"
                 },
+                "company": {
+                    "$ref": "#/definitions/ds.Company"
+                },
                 "company_id": {
+                    "type": "integer"
+                },
+                "id": {
                     "type": "integer"
                 },
                 "tender": {
@@ -808,8 +900,8 @@ const docTemplate = `{
                 "password"
             ],
             "properties": {
-                "isAdmin": {
-                    "type": "boolean"
+                "id": {
+                    "type": "integer"
                 },
                 "login": {
                     "type": "string",
@@ -826,49 +918,34 @@ const docTemplate = `{
                 "registrationDate": {
                     "type": "string"
                 },
-                "userId": {
+                "role": {
+                    "$ref": "#/definitions/role.Role"
+                }
+            }
+        },
+        "handler.errorResp": {
+            "type": "object",
+            "properties": {
+                "error_description": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "integer"
                 }
             }
         },
-        "ds.UserLogin": {
-            "type": "object",
-            "required": [
-                "login",
-                "password"
+        "role.Role": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
             ],
-            "properties": {
-                "login": {
-                    "type": "string",
-                    "maxLength": 64
-                },
-                "password": {
-                    "type": "string",
-                    "maxLength": 64,
-                    "minLength": 8
-                }
-            }
-        },
-        "ds.UserSignUp": {
-            "type": "object",
-            "required": [
-                "login",
-                "password"
-            ],
-            "properties": {
-                "login": {
-                    "type": "string",
-                    "maxLength": 64
-                },
-                "name": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string",
-                    "maxLength": 64,
-                    "minLength": 8
-                }
-            }
+            "x-enum-varnames": [
+                "Buyer",
+                "Moderator",
+                "Admin"
+            ]
         }
     }
 }`
